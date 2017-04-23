@@ -1,0 +1,198 @@
+use std;
+use std::collections::{BTreeSet, HashMap};
+use std::fmt::{Debug, Display, Formatter, Result};
+use std::iter::{Extend, FromIterator};
+
+use serde::{Deserialize, Serialize};
+
+use sexp;
+
+use constraints;
+
+#[cfg(test)]
+mod tests;
+
+#[derive(Debug, Clone)]
+pub struct FromSexpError {
+    pub message: String,
+}
+
+pub trait ToSexp: Sized {
+    fn to_sexp(&self) -> sexp::Sexp;
+    fn from_sexp(&sexp::Sexp) -> std::result::Result<Self, FromSexpError>;
+
+    fn from_sexp_string(s: &String) -> std::result::Result<Self, FromSexpError> {
+        Self::from_sexp_str(s.as_str())
+    }
+
+    fn from_sexp_str(s: &str) -> std::result::Result<Self, FromSexpError> {
+        match sexp::parse(s) {
+            Ok(s_exp) => Self::from_sexp(&s_exp),
+            Err(boxed_err) => {
+                match *boxed_err {
+                    sexp::Error { message, .. } => Err(FromSexpError { message: message.to_string() }),
+                }
+            }
+        }
+    }
+
+    fn to_sexp_string(&self) -> String {
+        self.to_sexp().to_string()
+    }
+}
+
+pub trait BindingsValue
+    : Clone + Debug + Deserialize + Display + Eq + PartialEq + PartialOrd + Serialize + ToSexp
+    {
+    fn to_float(&self) -> Option<f64>;
+    fn from_float(f64) -> Self;
+    fn variable(&self) -> Option<String>;
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize)]
+pub struct Bindings<T: BindingsValue> {
+    data: HashMap<String, T>,
+    equivalences: HashMap<String, BTreeSet<String>>,
+}
+
+impl<T: BindingsValue> PartialEq for Bindings<T> {
+    fn eq(&self, other: &Bindings<T>) -> bool {
+        self.data.eq(&other.data) && self.equivalences.eq(&other.equivalences)
+    }
+}
+impl<T: BindingsValue> Eq for Bindings<T> {}
+
+impl<T: BindingsValue> Bindings<T> {
+    pub fn new() -> Bindings<T> {
+        Bindings {
+            data: HashMap::new(),
+            equivalences: HashMap::new(),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    pub fn new_from_vec(data: Vec<(String, T)>) -> Bindings<T> {
+        data.into_iter().collect()
+    }
+
+    pub fn has_binding(&self, variable: &String) -> bool {
+        self.data.contains_key(variable)
+    }
+
+    pub fn set_binding(&self, variable: &String, val: T) -> Bindings<T> {
+        let mut bindings_copy = self.clone();
+
+        bindings_copy.set_binding_mut(variable, val);
+
+        bindings_copy
+    }
+
+    pub fn set_binding_mut(&mut self, variable: &String, val: T) {
+        self.ensure_equivalence_exists_mut(variable);
+
+        if let Some(variable2) = val.variable() {
+            self.add_equivalence(variable, &variable2);
+        } else {
+            for equivalent_variable in self.equivalences.get(variable).unwrap().iter() {
+                self.data.insert(equivalent_variable.clone(), val.clone());
+            }
+        }
+    }
+
+    fn add_equivalence(&mut self, variable: &String, variable2: &String) {
+        self.ensure_equivalence_exists_mut(&variable2);
+        self.merge_equivalences_mut(variable, &variable2);
+    }
+
+    fn ensure_equivalence_exists_mut(&mut self, variable: &String) {
+        if !self.equivalences.contains_key(variable) {
+            self.equivalences.insert(variable.clone(),
+                                     vec![variable.clone()].into_iter().collect());
+        }
+    }
+
+    fn merge_equivalences_mut(&mut self, variable: &String, variable2: &String) {
+        let mut merge = self.equivalences.get(variable).cloned().unwrap();
+        merge.extend(self.equivalences.get(variable2).cloned().unwrap());
+
+        self.equivalences.insert(variable.clone(), merge.clone());
+        self.equivalences.insert(variable2.clone(), merge);
+    }
+
+    pub fn get_binding(&self, variable: &String) -> Option<T> {
+        match self.data.get(variable) {
+            Some(val) => Some(val.clone()),
+            None => None,
+        }
+    }
+
+    pub fn update_bindings(&self, variable: &String, value: &T) -> Option<Self> {
+        // If we are setting a variable to itself, then do nothing
+        if Some(variable.clone()) == value.variable() {
+            return Some(self.clone());
+        }
+        match self.get_binding(&variable) {
+            Some(ref val) if val == value => Some(self.clone()),
+            Some(_) => None,
+            None => Some(self.set_binding(variable, value.clone())),
+        }
+    }
+}
+
+impl<T: BindingsValue> FromIterator<(String, T)> for Bindings<T> {
+    fn from_iter<I: IntoIterator<Item = (String, T)>>(iter: I) -> Bindings<T> {
+        let mut bindings: Bindings<T> = Bindings::new();
+        for (key, value) in iter {
+            bindings.set_binding_mut(&key, value);
+        }
+        bindings
+    }
+}
+
+impl<T: BindingsValue> Extend<(String, T)> for Bindings<T> {
+    fn extend<It>(&mut self, iter: It)
+        where It: IntoIterator<Item = (String, T)>
+    {
+        for (key, value) in iter {
+            self.set_binding_mut(&key, value);
+        }
+    }
+}
+
+impl<T: BindingsValue> Display for Bindings<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        try!(write!(f, "("));
+        for (key, val) in self.data.iter() {
+            try!(write!(f, "{} => {}, ", key, val));
+        }
+        write!(f, ")")
+    }
+}
+
+pub trait Unify<T: BindingsValue>
+    : Clone + Debug + Display + Eq + Serialize + Deserialize + PartialEq {
+    fn unify(&self, &Self, &Bindings<T>) -> Option<Bindings<T>>;
+    fn apply_bindings(&self, &Bindings<T>) -> Option<Self>;
+    fn constraints<'a>(&'a self) -> Vec<&'a constraints::Constraint<T>> {
+        Vec::new()
+    }
+    fn variables(&self) -> Vec<String>;
+    fn get_variable(&self, &String) -> Option<&T>;
+    fn rename_variables(&self, &HashMap<String, String>) -> Self;
+    fn nil() -> Self;
+    fn equiv(&self, other: &Self) -> bool {
+        self.unify(other, &Bindings::new()).is_some()
+    }
+}
+
+pub trait Apply<T: BindingsValue, U: Unify<T>>
+    : Clone + Debug + Display + Eq + PartialEq + Deserialize + Serialize {
+    fn arg_count(&self) -> usize;
+    fn apply(&self, &Vec<&U>, &Bindings<T>) -> Option<(U, Bindings<T>)>;
+    fn constraints<'a>(&'a self) -> Vec<&'a constraints::Constraint<T>>;
+    fn r_apply(&self, &U, &Bindings<T>) -> Option<(Vec<U>, Bindings<T>)>;
+    fn snowflake(&self, String) -> Self;
+}
