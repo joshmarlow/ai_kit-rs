@@ -42,7 +42,7 @@ pub trait ToSexp: Sized {
 }
 
 pub trait BindingsValue
-    : Clone + Debug + Deserialize + Display + Eq + PartialEq + PartialOrd + Serialize + ToSexp
+    : Clone + Debug + Deserialize + Display + Eq + PartialEq + PartialOrd + Serialize
     {
     fn to_float(&self) -> Option<f64>;
     fn from_float(f64) -> Self;
