@@ -45,9 +45,11 @@ impl<T: BindingsValue> SolveResult<T> {
 pub enum Constraint<T: BindingsValue> {
     /// (constraint-set (?x CONSTANT))
     /// ?x = CONSTANT
+    #[serde(rename="set")]
     Set { variable: String, constant: f64 },
     /// (constraint-sum (?x ?y ?z))
     /// ?x + ?y = ?z
+    #[serde(rename="sum")]
     Sum {
         first: String,
         second: String,
@@ -56,6 +58,7 @@ pub enum Constraint<T: BindingsValue> {
     },
     /// (constraint-mul (?x ?y ?z))
     /// ?x * ?y = ?z
+    #[serde(rename="mul")]
     Mul {
         first: String,
         second: String,
@@ -64,6 +67,7 @@ pub enum Constraint<T: BindingsValue> {
     },
     /// (constraint-less-than (?x ?y))
     /// ?x < ?y
+    #[serde(rename="<")]
     LessThan {
         left: String,
         right: String,
@@ -71,6 +75,7 @@ pub enum Constraint<T: BindingsValue> {
     },
     /// (constraint-greater-than (?x ?y))
     /// ?x > ?y
+    #[serde(rename=">")]
     GreaterThan {
         left: String,
         right: String,
