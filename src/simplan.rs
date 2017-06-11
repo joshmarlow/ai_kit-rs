@@ -157,7 +157,10 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Subgoal<T, U, A> {
         match self.unification_index {
             SubgoalUnificationIndex::Datum(idx) => {
                 if self.can_use_datum(idx) {
+                    self.log(max_depth,
+                             format!("Trying to unify: {} with {}", self.pattern, data[idx]));
                     if let Some(bindings) = data[idx].unify(&self.pattern, &self.current_plan_parameters.bindings) {
+                        self.log(max_depth, format!("\tunified!: {}", bindings));
                         self.current_plan_parameters = PlanParameters {
                             bindings: bindings,
                             constraints: self.current_plan_parameters.constraints.clone(),
@@ -174,7 +177,10 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Subgoal<T, U, A> {
             }
             SubgoalUnificationIndex::Actor(idx) => {
                 let rule = rules[idx].snowflake(self.construct_snowflake_prefix());
+                self.log(max_depth,
+                         format!("Trying to apply: {}, {}", self.pattern, rule));
                 rule.r_apply(&self.pattern, &self.current_plan_parameters.bindings).and_then(|(subgoal_patterns, bindings)| {
+                    self.log(max_depth, format!("\tapplied!: {}", bindings));
                     let mut updated_constraints = self.current_plan_parameters.constraints.clone();
                     updated_constraints.extend(rule.constraints().into_iter().cloned());
 
