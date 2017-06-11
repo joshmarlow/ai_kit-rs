@@ -81,9 +81,9 @@ impl Datum {
         }
     }
 
-    pub fn head(&self) -> Option<Box<Datum>> {
+    pub fn head<'a>(&'a self) -> Option<&'a Box<Datum>> {
         match *self {
-            Datum::Compound { ref head, args: ref _args } => Some(head.clone()),
+            Datum::Compound { ref head, args: ref _args } => Some(head),
             _ => None,
         }
     }
