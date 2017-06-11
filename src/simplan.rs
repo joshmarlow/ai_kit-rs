@@ -159,7 +159,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Subgoal<T, U, A> {
                 if self.can_use_datum(idx) {
                     self.log(max_depth,
                              format!("Trying to unify: {} with {}", self.pattern, data[idx]));
-                    if let Some(bindings) = data[idx].unify(&self.pattern, &self.current_plan_parameters.bindings) {
+                    data[idx].unify(&self.pattern, &self.current_plan_parameters.bindings).and_then(|bindings| {
                         self.log(max_depth, format!("\tunified!: {}", bindings));
                         self.current_plan_parameters = PlanParameters {
                             bindings: bindings,
@@ -168,9 +168,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Subgoal<T, U, A> {
                         };
                         self.current_plan_parameters.used_data.insert(idx);
                         Some(self.current_plan_parameters.clone())
-                    } else {
-                        None
-                    }
+                    })
                 } else {
                     None
                 }
@@ -257,7 +255,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Subgoal<T, U, A> {
                 subtree_string)
     }
 
-    fn render_subtree(&self, parent: Option<String>) -> String {
+    pub fn render_subtree(&self, parent: Option<String>) -> String {
         let goal_rendering = format!("{} [{}]", self.pattern, self.unification_index);
         let subtree_string_vec: Vec<String> = self.subgoals
             .iter()
@@ -290,6 +288,21 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Subgoal<T, U, A> {
     pub fn construct_snowflake_prefix(&self) -> String {
         Uuid::new_v4().to_string()
     }
+
+    /// Traverse the subgoal tree using a depth-first search and gather the leaves of the plan
+    pub fn gather_leaves(&self, plan_parameters: &PlanParameters<T>) -> Vec<U> {
+        let mut leaves = Vec::new();
+
+        if self.subgoals.is_empty() {
+            leaves.push(self.pattern.apply_bindings(&plan_parameters.bindings).unwrap());
+        } else {
+            for sg in self.subgoals.iter() {
+                leaves.extend(sg.gather_leaves(plan_parameters).into_iter());
+            }
+        }
+
+        leaves
+    }
 }
 
 impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> std::fmt::Display for Subgoal<T, U, A> {
@@ -299,7 +312,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> std::fmt::Display for Subgoa
 }
 
 #[cfg(test)]
-mod tests {
+mod simplan_tests {
     use std::collections::HashSet;
     use core::{Bindings, ToSexp};
     use datum::Datum;
@@ -354,13 +367,113 @@ mod tests {
                                         reuse_data: true,
                                     });
 
-        println!("\n");
         let plan_parameters = goal.plan(&data.iter().collect(), &rules.iter().collect());
         assert_eq!(plan_parameters.is_some(), true);
-        println!("\nBindings: {}", plan_parameters.as_ref().unwrap().bindings);
         let plan_parameters = plan_parameters.unwrap();
         assert_eq!(plan_parameters.bindings.get_binding(&"?t2".to_string()).unwrap(),
                    Datum::from_float(3.0));
+    }
+
+    #[test]
+    fn test_plan_with_backtracking_simple() {
+        let rules = setup_rules();
+        let data = vec![Datum::from_sexp_str("(timeline-entry ((current-state 0) ((time 1)) ()))").unwrap()];
+        let goal_pattern = Datum::from_sexp_str("(timeline-entry ((current-state 2) ((time ?t2)) ()))").unwrap();
+
+        let mut goal = Subgoal::new(goal_pattern,
+                                    &PlanParameters {
+                                        bindings: Bindings::new(),
+                                        constraints: Vec::new(),
+                                        used_data: HashSet::new(),
+                                    },
+                                    PlanningConfig {
+                                        debug: true,
+                                        max_depth: 3,
+                                        reuse_data: true,
+                                    });
+
+        let plan_parameters = goal.plan(&data.iter().collect(), &rules.iter().collect());
+        assert_eq!(plan_parameters.is_some(), true);
+        println!("\n{}", goal);
+
+        let expected_leaves: Vec<Datum> = vec![Datum::from_sexp_str(&"(timeline-entry ((current-state 0) ((time 1)) ()))")
+                                                   .unwrap(),
+                                               Datum::from_sexp_str(&"(timeline-entry ((action 2) ((time 1)) ()))").unwrap()];
+        let actual_leaves = goal.gather_leaves(&plan_parameters.unwrap());
+        assert_eq!(actual_leaves, expected_leaves);
+
+        // And backtrack!
+        let plan_parameters = goal.plan(&data.iter().collect(), &rules.iter().collect());
+        assert_eq!(plan_parameters.is_some(), true);
+
+        let expected_leaves: Vec<Datum> = vec![Datum::from_sexp_str(&"(timeline-entry ((current-state 0) ((time 1)) ()))")
+                                                   .unwrap(),
+                                               Datum::from_sexp_str(&"(timeline-entry ((action 1) ((time 1)) ()))").unwrap(),
+                                               Datum::from_sexp_str(&"(timeline-entry ((action 1) ((time 2)) ()))").unwrap()];
+        let actual_leaves = goal.gather_leaves(&plan_parameters.unwrap());
+        assert_eq!(actual_leaves, expected_leaves);
+    }
+
+    #[test]
+    fn test_plan_with_backtracking_complex() {
+        let rules = setup_rules();
+        let data = vec![Datum::from_sexp_str("(timeline-entry ((current-state 0) ((time 1)) ()))").unwrap()];
+        let goal_pattern = Datum::from_sexp_str("(timeline-entry ((current-state 4) ((time ?t2)) ()))").unwrap();
+
+        let mut goal = Subgoal::new(goal_pattern,
+                                    &PlanParameters {
+                                        bindings: Bindings::new(),
+                                        constraints: Vec::new(),
+                                        used_data: HashSet::new(),
+                                    },
+                                    PlanningConfig {
+                                        debug: false,
+                                        max_depth: 3,
+                                        reuse_data: true,
+                                    });
+
+        let plan_parameters = goal.plan(&data.iter().collect(), &rules.iter().collect());
+        assert_eq!(plan_parameters.is_some(), true);
+        println!("\n{}", goal);
+
+        let expected_leaves: Vec<Datum> = vec![Datum::from_sexp_str(&"(timeline-entry ((current-state 0) ((time 1)) ()))")
+                                                   .unwrap(),
+                                               Datum::from_sexp_str(&"(timeline-entry ((action 2) ((time 1)) ()))").unwrap(),
+                                               Datum::from_sexp_str(&"(timeline-entry ((action 2) ((time 2)) ()))").unwrap()];
+        let actual_leaves = goal.gather_leaves(&plan_parameters.unwrap());
+        println!("\n");
+        println!("Actual\n");
+        for l in actual_leaves.iter() {
+            println!("\t{}", l);
+        }
+        println!("Expected\n");
+        for l in expected_leaves.iter() {
+            println!("\t{}", l);
+        }
+        assert_eq!(actual_leaves, expected_leaves);
+
+        println!("\n\n*********************\n\n");
+
+        // And backtrack!
+        let plan_parameters = goal.plan(&data.iter().collect(), &rules.iter().collect());
+        assert_eq!(plan_parameters.is_some(), true);
+
+        let expected_leaves: Vec<Datum> = vec![Datum::from_sexp_str(&"(timeline-entry ((current-state 0) ((time 1)) ()))")
+                                                   .unwrap(),
+                                               Datum::from_sexp_str(&"(timeline-entry ((action 2) ((time 1)) ()))").unwrap(),
+                                               Datum::from_sexp_str(&"(timeline-entry ((action 1) ((time 2)) ()))").unwrap(),
+                                               Datum::from_sexp_str(&"(timeline-entry ((action 1) ((time 3)) ()))").unwrap()];
+        let actual_leaves = goal.gather_leaves(&plan_parameters.unwrap());
+        println!("\n");
+        println!("Actual\n");
+        for l in actual_leaves.iter() {
+            println!("\t{}", l);
+        }
+        println!("Expected\n");
+        for l in expected_leaves.iter() {
+            println!("\t{}", l);
+        }
+        assert_eq!(actual_leaves, expected_leaves);
     }
 
     #[test]
@@ -397,9 +510,16 @@ mod tests {
                                     PlanningConfig {
                                         debug: false,
                                         max_depth: 5,
-                                        reuse_data: true,
+                                        reuse_data: false,
                                     });
-        assert_eq!(goal.plan(&data.iter().collect(), &rules.iter().collect()).is_some(),
-                   true);
+        let plan_parameters = goal.plan(&data.iter().collect(), &rules.iter().collect());
+        assert_eq!(plan_parameters.is_some(), true);
+        let expected_leaves: Vec<Datum> =
+            vec!["a".to_string(), "dog".to_string(), "chased".to_string(), "the".to_string(), "cat".to_string()]
+                .into_iter()
+                .map(|s| Datum::String(s))
+                .collect();
+        assert_eq!(goal.gather_leaves(&plan_parameters.unwrap()),
+                   expected_leaves);
     }
 }
