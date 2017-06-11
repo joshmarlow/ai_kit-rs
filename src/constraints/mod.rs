@@ -81,6 +81,14 @@ pub enum Constraint<T: BindingsValue> {
         right: String,
         _marker: PhantomData<T>,
     },
+    /// (constraint-not-equal (?x ?y))
+    /// ?x != ?y
+    #[serde(rename="neq")]
+    NotEqual {
+        left: String,
+        right: String,
+        _marker: PhantomData<T>,
+    },
 }
 
 impl<T: BindingsValue> Eq for Constraint<T> {}
@@ -142,6 +150,15 @@ impl<T: BindingsValue> Constraint<T> {
             Constraint::GreaterThan { ref left, ref right, .. } => {
                 match (bindings.get_binding(left), bindings.get_binding(right)) {
                     (Some(ref left_value), Some(ref right_value)) if left_value > right_value => {
+                        return SolveResult::Success(bindings.clone())
+                    }
+                    (Some(_), Some(_)) => return SolveResult::Conflict,
+                    _ => return SolveResult::Partial(bindings.clone()),
+                }
+            }
+            Constraint::NotEqual { ref left, ref right, .. } => {
+                match (bindings.get_binding(left), bindings.get_binding(right)) {
+                    (Some(ref left_value), Some(ref right_value)) if left_value != right_value => {
                         return SolveResult::Success(bindings.clone())
                     }
                     (Some(_), Some(_)) => return SolveResult::Conflict,
@@ -221,6 +238,13 @@ impl<T: BindingsValue> Constraint<T> {
                     _marker: PhantomData,
                 }
             }
+            Constraint::NotEqual { ref left, ref right, .. } => {
+                Constraint::GreaterThan {
+                    left: lookup(left),
+                    right: lookup(right),
+                    _marker: PhantomData,
+                }
+            }
         }
     }
 
@@ -231,6 +255,7 @@ impl<T: BindingsValue> Constraint<T> {
             Constraint::Mul { ref first, ref second, ref third, .. } => vec![first.clone(), second.clone(), third.clone()],
             Constraint::LessThan { ref left, ref right, .. } => vec![left.clone(), right.clone()],
             Constraint::GreaterThan { ref left, ref right, .. } => vec![left.clone(), right.clone()],
+            Constraint::NotEqual { ref left, ref right, .. } => vec![left.clone(), right.clone()],
         }
     }
 }
@@ -283,6 +308,13 @@ impl<T: BindingsValue> PartialOrd for Constraint<T> {
                     ordering => ordering,
                 }
             }
+            (&Constraint::NotEqual { ref left, ref right, .. },
+             &Constraint::NotEqual { left: ref left2, right: ref right2, .. }) => {
+                match left.partial_cmp(left2) {
+                    Some(std::cmp::Ordering::Equal) => right.partial_cmp(right2),
+                    ordering => ordering,
+                }
+            }
             (_, _) => None,
         }
     }
@@ -314,6 +346,10 @@ impl<T: BindingsValue> ToSexp for Constraint<T> {
             }
             Constraint::GreaterThan { ref left, ref right, .. } => {
                 utils::to_sexp_helper("constraint-greater-than",
+                                      Sexp::List(vec![Sexp::Atom(Atom::S(left.clone())), Sexp::Atom(Atom::S(right.clone()))]))
+            }
+            Constraint::NotEqual { ref left, ref right, .. } => {
+                utils::to_sexp_helper("constraint-neq",
                                       Sexp::List(vec![Sexp::Atom(Atom::S(left.clone())), Sexp::Atom(Atom::S(right.clone()))]))
             }
         }
@@ -412,6 +448,25 @@ impl<T: BindingsValue> ToSexp for Constraint<T> {
                                         &|args| match (&args[0], &args[1]) {
                                             (&Sexp::Atom(Atom::S(ref left_var)), &Sexp::Atom(Atom::S(ref right_var))) => {
                                                 Ok(Constraint::GreaterThan {
+                                                    left: left_var.clone(),
+                                                    right: right_var.clone(),
+                                                    _marker: PhantomData,
+                                                })
+                                            }
+                                            _ => {
+                                                Err(FromSexpError {
+                                                    message: "Expected (atom list), but received (list atom)".to_string(),
+                                                })
+                                            }
+                                        })
+            })
+            .or_else(|_err| {
+                utils::from_sexp_helper("constraint-neq",
+                                        s_exp,
+                                        2,
+                                        &|args| match (&args[0], &args[1]) {
+                                            (&Sexp::Atom(Atom::S(ref left_var)), &Sexp::Atom(Atom::S(ref right_var))) => {
+                                                Ok(Constraint::NotEqual {
                                                     left: left_var.clone(),
                                                     right: right_var.clone(),
                                                     _marker: PhantomData,
