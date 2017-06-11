@@ -225,7 +225,7 @@ impl<'a, T: BindingsValue + ToSexp, U: Unify<T> + ToSexp> InferenceEngine<'a, T,
         format!("{}-{}", self.prefix, self.derived_facts.len())
     }
 
-    fn render_inference_tree(&self, id: &String, render_type: RenderType) -> String {
+    pub fn render_inference_tree(&self, id: &String, render_type: RenderType) -> String {
         let node_renderer = |x| {
             self.facts
                 .get(&x)

@@ -345,14 +345,14 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Subgoal<T, U, A> {
         }
     }
 
-    fn render_goal_tree(&self, plan_parameters: &PlanParameters<T>) -> String {
+    pub fn render_goal_tree(&self, plan_parameters: &PlanParameters<T>) -> String {
         let subtree_string = self.render_subtree(plan_parameters, None);
         format!("graph \"goal tree {}\" {{\n{}\n}}",
                 self.pattern,
                 subtree_string)
     }
 
-    fn render_subtree(&self, plan_parameters: &PlanParameters<T>, parent: Option<String>) -> String {
+    pub fn render_subtree(&self, plan_parameters: &PlanParameters<T>, parent: Option<String>) -> String {
         let goal_rendering = format!("{}/{} [{}]",
                                      self.pattern,
                                      self.bound_pattern(plan_parameters).unwrap(),
