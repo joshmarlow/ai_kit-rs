@@ -82,127 +82,67 @@ mod fplan_tests {
         let data_refs: Vec<&Datum> = data.iter().collect();
         let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
 
-        let goal = Goal::new(Datum::from_sexp_str("((current-state 4) ((time ?t)))").expect("Goal datum"));
+        let goal = Goal::new(Datum::from_sexp_str("((current-state 4) ((time ?t)))").expect("Goal datum"),
+                             UnificationIndex::Init,
+                             Vec::new());
 
         let expected_steps: Vec<Goal<Datum, Datum, Rule<Datum, Datum>>> = vec![// First goal
-                                                                               Goal {
-                                                                                   pattern: goal.pattern.clone(),
-                                                                                   unification_index:
-                                                                                       UnificationIndex::Datum(0),
-                                                                                   subgoals: Vec::new(),
-                                                                                   _a_marker: PhantomData,
-                                                                                   _t_marker: PhantomData,
-                                                                               }, // Second goal
-                                                                               Goal {
-                                                                                   pattern: goal.pattern.clone(),
-                                                                                   unification_index:
-                                                                                       UnificationIndex::Actor(0),
-                                                                                   subgoals: vec![Goal {
-                               pattern: Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
-                               unification_index: UnificationIndex::Init,
-                               subgoals: Vec::new(),
-                               _a_marker: PhantomData,
-                               _t_marker: PhantomData,
-                           },
-                           Goal {
-                               pattern: Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
-                               unification_index: UnificationIndex::Init,
-                               subgoals: Vec::new(),
-                               _a_marker: PhantomData,
-                               _t_marker: PhantomData,
-                           }],
-                                                                                   _a_marker: PhantomData,
-                                                                                   _t_marker: PhantomData,
-                                                                               }, // Third goal
-                                                                               Goal {
-                                                                                   pattern: goal.pattern.clone(),
-                                                                                   unification_index:
-                                                                                       UnificationIndex::Actor(0),
-                                                                                   subgoals: vec![Goal {
-                               pattern: Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
-                               unification_index: UnificationIndex::Datum(0),
-                               subgoals: vec![],
-                               _a_marker: PhantomData,
-                               _t_marker: PhantomData,
-                           },
-                           Goal {
-                               pattern: Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
-                               unification_index: UnificationIndex::Init,
-                               subgoals: Vec::new(),
-                               _a_marker: PhantomData,
-                               _t_marker: PhantomData,
-                           }],
-                                                                                   _a_marker: PhantomData,
-                                                                                   _t_marker: PhantomData,
-                                                                               }, // Fourth goal
-                                                                               Goal {
-                                                                                   pattern: goal.pattern.clone(),
-                                                                                   unification_index:
-                                                                                       UnificationIndex::Actor(0),
-                                                                                   subgoals: vec![Goal {
-                               pattern: Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
-                               unification_index: UnificationIndex::Datum(0),
-                               subgoals: vec![],
-                               _a_marker: PhantomData,
-                               _t_marker: PhantomData,
-                           },
-                           Goal {
-                               pattern: Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
-                               unification_index: UnificationIndex::Datum(0),
-                               subgoals: Vec::new(),
-                               _a_marker: PhantomData,
-                               _t_marker: PhantomData,
-                           }],
-                                                                                   _a_marker: PhantomData,
-                                                                                   _t_marker: PhantomData,
-                                                                               }, // Fifth goal
-                                                                               Goal {
-                                                                                   pattern: goal.pattern.clone(),
-                                                                                   unification_index:
-                                                                                       UnificationIndex::Actor(0),
-                                                                                   subgoals: vec![Goal {
-                               pattern: Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
-                               unification_index: UnificationIndex::Datum(0),
-                               subgoals: vec![],
-                               _a_marker: PhantomData,
-                               _t_marker: PhantomData,
-                           },
-                           Goal {
-                               pattern: Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
-                               unification_index: UnificationIndex::Actor(1),
-                               subgoals: Vec::new(),
-                               _a_marker: PhantomData,
-                               _t_marker: PhantomData,
-                           }],
-                                                                                   _a_marker: PhantomData,
-                                                                                   _t_marker: PhantomData,
-                                                                               }, // Sixth goal
-                                                                               Goal {
-                                                                                   pattern: goal.pattern.clone(),
-                                                                                   unification_index:
-                                                                                       UnificationIndex::Actor(2),
-                                                                                   subgoals: vec![Goal {
-                               pattern: Datum::from_sexp_str("((current-state 3) ((time ?t1::4)))").expect("SubGoal 1 datum"),
-                               unification_index: UnificationIndex::Init,
-                               subgoals: vec![],
-                               _a_marker: PhantomData,
-                               _t_marker: PhantomData,
-                           },
-                           Goal {
-                               pattern: Datum::from_sexp_str("((action 1) ((time ?t1::4)))").expect("SubGoal 2 datum"),
-                               unification_index: UnificationIndex::Init,
-                               subgoals: Vec::new(),
-                               _a_marker: PhantomData,
-                               _t_marker: PhantomData,
-                           }],
-                                                                                   _a_marker: PhantomData,
-                                                                                   _t_marker: PhantomData,
-                                                                               }];
+                 Goal::new(goal.pattern.clone(), UnificationIndex::Datum(0), Vec::new()),
+                 // Second goal
+                 Goal::new(goal.pattern.clone(),
+                           UnificationIndex::Actor(0),
+                           vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))")
+                                              .expect("SubGoal 1 datum"),
+                                          UnificationIndex::Init,
+                                          Vec::new()),
+                                Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
+                                          UnificationIndex::Init,
+                                          Vec::new())]),
+                 // Third goal
+                 Goal::new(goal.pattern.clone(),
+                           UnificationIndex::Actor(0),
+                           vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))")
+                                              .expect("SubGoal 1 datum"),
+                                          UnificationIndex::Datum(0),
+                                          vec![]),
+                                Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
+                                          UnificationIndex::Init,
+                                          Vec::new())]),
+                 // Fourth goal
+                 Goal::new(goal.pattern.clone(),
+                           UnificationIndex::Actor(0),
+                           vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))")
+                                              .expect("SubGoal 1 datum"),
+                                          UnificationIndex::Datum(0),
+                                          vec![]),
+                                Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
+                                          UnificationIndex::Datum(0),
+                                          Vec::new())]),
+                 // Fifth goal
+                 Goal::new(goal.pattern.clone(),
+                           UnificationIndex::Actor(0),
+                           vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))")
+                                              .expect("SubGoal 1 datum"),
+                                          UnificationIndex::Datum(0),
+                                          vec![]),
+                                Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
+                                          UnificationIndex::Actor(1),
+                                          Vec::new())]),
+                 // Sixth goal
+                 Goal::new(goal.pattern.clone(),
+                           UnificationIndex::Actor(2),
+                           vec![Goal::new(Datum::from_sexp_str("((current-state 3) ((time ?t1::4)))")
+                                              .expect("SubGoal 1 datum"),
+                                          UnificationIndex::Init,
+                                          vec![]),
+                                Goal::new(Datum::from_sexp_str("((action 1) ((time ?t1::4)))").expect("SubGoal 2 datum"),
+                                          UnificationIndex::Init,
+                                          Vec::new())])];
         let mut stepped_goal = goal.step(&data_refs, &rule_refs, 2).expect("Initial plan");
 
         for (idx, expected_stepped_goal) in expected_steps.into_iter().enumerate() {
             println!("Step {}\n----Expected:\n{}\n\n----Actual:\n{}\n\n",
-                     idx + 1,
+                     idx,
                      expected_stepped_goal,
                      stepped_goal);
             assert_eq!(stepped_goal,

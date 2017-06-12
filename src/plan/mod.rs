@@ -105,14 +105,18 @@ pub struct Goal<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> {
 }
 
 impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
-    pub fn new(pattern: U) -> Self {
+    pub fn new(pattern: U, unification_index: UnificationIndex, subgoals: Vec<Self>) -> Self {
         Goal {
             pattern: pattern,
-            subgoals: Vec::new(),
-            unification_index: UnificationIndex::Init,
+            subgoals: subgoals,
+            unification_index: unification_index,
             _a_marker: PhantomData,
             _t_marker: PhantomData,
         }
+    }
+
+    pub fn with_pattern(pattern: U) -> Self {
+        Goal::new(pattern, UnificationIndex::Init, Vec::new())
     }
 
     /// Construct a mutated plan
@@ -155,7 +159,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
         let rule = rules[idx].snowflake(format!("{}", snowflake_prefix_id));
         rule.r_apply(r_pattern, &Bindings::new()).and_then(|(subgoal_patterns, _bindings)| {
             Some(subgoal_patterns.into_iter()
-                .map(Goal::new)
+                .map(Goal::with_pattern)
                 .collect())
         })
     }
