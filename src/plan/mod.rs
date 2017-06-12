@@ -129,7 +129,6 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
 
         // If subgoals cannot be stepped, step this goal
         loop {
-            println!("In Step loop {}", goal.unification_index);
             goal.unification_index = increment_unification_index(&goal.unification_index, data.len(), rules.len());
             match goal.unification_index {
                 UnificationIndex::Datum(_idx) => return Some(goal),
@@ -154,9 +153,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
 
     pub fn create_subgoals(r_pattern: &U, idx: usize, rules: &Vec<&A>, snowflake_prefix_id: usize) -> Option<Vec<Self>> {
         let rule = rules[idx].snowflake(format!("{}", snowflake_prefix_id));
-        println!("Applying, pattern: {:?}\n\tRule: {:?}\n", r_pattern, rule);
         rule.r_apply(r_pattern, &Bindings::new()).and_then(|(subgoal_patterns, _bindings)| {
-            println!("\t\tApplied!");
             Some(subgoal_patterns.into_iter()
                 .map(Goal::new)
                 .collect())

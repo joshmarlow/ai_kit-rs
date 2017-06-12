@@ -84,171 +84,131 @@ mod fplan_tests {
 
         let goal = Goal::new(Datum::from_sexp_str("((current-state 4) ((time ?t)))").expect("Goal datum"));
 
-        // Test step 1
-        let expected_stepped_goal: Goal<Datum, Datum, Rule<Datum, Datum>> = Goal {
-            pattern: goal.pattern.clone(),
-            unification_index: UnificationIndex::Datum(0),
-            subgoals: Vec::new(),
-            _a_marker: PhantomData,
-            _t_marker: PhantomData,
-        };
-        let stepped_goal = goal.step(&data_refs, &rule_refs, 0).expect("First plan");
-        assert_eq!(stepped_goal, expected_stepped_goal, "First stepped goal");
-
-        // Test step 2
-        let expected_stepped_goal_2: Goal<Datum, Datum, Rule<Datum, Datum>> = Goal {
-            pattern: goal.pattern.clone(),
-            unification_index: UnificationIndex::Actor(0),
-            subgoals: vec![Goal {
-                               pattern: Datum::from_sexp_str("((current-state 2) ((time ?t1::1)))").expect("SubGoal 1 datum"),
+        let expected_steps: Vec<Goal<Datum, Datum, Rule<Datum, Datum>>> = vec![// First goal
+                                                                               Goal {
+                                                                                   pattern: goal.pattern.clone(),
+                                                                                   unification_index:
+                                                                                       UnificationIndex::Datum(0),
+                                                                                   subgoals: Vec::new(),
+                                                                                   _a_marker: PhantomData,
+                                                                                   _t_marker: PhantomData,
+                                                                               }, // Second goal
+                                                                               Goal {
+                                                                                   pattern: goal.pattern.clone(),
+                                                                                   unification_index:
+                                                                                       UnificationIndex::Actor(0),
+                                                                                   subgoals: vec![Goal {
+                               pattern: Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
                                unification_index: UnificationIndex::Init,
                                subgoals: Vec::new(),
                                _a_marker: PhantomData,
                                _t_marker: PhantomData,
                            },
                            Goal {
-                               pattern: Datum::from_sexp_str("((action 2) ((time ?t1::1)))").expect("SubGoal 2 datum"),
+                               pattern: Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
                                unification_index: UnificationIndex::Init,
                                subgoals: Vec::new(),
                                _a_marker: PhantomData,
                                _t_marker: PhantomData,
                            }],
-            _a_marker: PhantomData,
-            _t_marker: PhantomData,
-        };
-        let stepped_goal_2 = stepped_goal.step(&data_refs, &rule_refs, 1).expect("Second plan");
-
-        assert_eq!(stepped_goal_2,
-                   expected_stepped_goal_2,
-                   "Second stepped goal");
-
-        // Test step 3
-        let expected_stepped_goal_3: Goal<Datum, Datum, Rule<Datum, Datum>> = Goal {
-            pattern: goal.pattern.clone(),
-            unification_index: UnificationIndex::Actor(0),
-            subgoals: vec![Goal {
-                               pattern: Datum::from_sexp_str("((current-state 2) ((time ?t1::1)))").expect("SubGoal 1 datum"),
+                                                                                   _a_marker: PhantomData,
+                                                                                   _t_marker: PhantomData,
+                                                                               }, // Third goal
+                                                                               Goal {
+                                                                                   pattern: goal.pattern.clone(),
+                                                                                   unification_index:
+                                                                                       UnificationIndex::Actor(0),
+                                                                                   subgoals: vec![Goal {
+                               pattern: Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
                                unification_index: UnificationIndex::Datum(0),
                                subgoals: vec![],
                                _a_marker: PhantomData,
                                _t_marker: PhantomData,
                            },
                            Goal {
-                               pattern: Datum::from_sexp_str("((action 2) ((time ?t1::1)))").expect("SubGoal 2 datum"),
+                               pattern: Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
                                unification_index: UnificationIndex::Init,
                                subgoals: Vec::new(),
                                _a_marker: PhantomData,
                                _t_marker: PhantomData,
                            }],
-            _a_marker: PhantomData,
-            _t_marker: PhantomData,
-        };
-        let stepped_goal_3 = stepped_goal_2.step(&data_refs, &rule_refs, 2).expect("Third plan");
-        assert_eq!(stepped_goal_3,
-                   expected_stepped_goal_3,
-                   "Second stepped goal");
-
-        // Test step 4
-        let expected_stepped_goal_4: Goal<Datum, Datum, Rule<Datum, Datum>> = Goal {
-            pattern: goal.pattern.clone(),
-            unification_index: UnificationIndex::Actor(0),
-            subgoals: vec![Goal {
-                               pattern: Datum::from_sexp_str("((current-state 2) ((time ?t1::1)))").expect("SubGoal 1 datum"),
+                                                                                   _a_marker: PhantomData,
+                                                                                   _t_marker: PhantomData,
+                                                                               }, // Fourth goal
+                                                                               Goal {
+                                                                                   pattern: goal.pattern.clone(),
+                                                                                   unification_index:
+                                                                                       UnificationIndex::Actor(0),
+                                                                                   subgoals: vec![Goal {
+                               pattern: Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
                                unification_index: UnificationIndex::Datum(0),
                                subgoals: vec![],
                                _a_marker: PhantomData,
                                _t_marker: PhantomData,
                            },
                            Goal {
-                               pattern: Datum::from_sexp_str("((action 2) ((time ?t1::1)))").expect("SubGoal 2 datum"),
+                               pattern: Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
                                unification_index: UnificationIndex::Datum(0),
                                subgoals: Vec::new(),
                                _a_marker: PhantomData,
                                _t_marker: PhantomData,
                            }],
-            _a_marker: PhantomData,
-            _t_marker: PhantomData,
-        };
-        let stepped_goal_4 = stepped_goal_3.step(&data_refs, &rule_refs, 2).expect("Third plan");
-        assert_eq!(stepped_goal_4,
-                   expected_stepped_goal_4,
-                   "Second stepped goal");
-
-        // Test step 5
-        let expected_stepped_goal_5: Goal<Datum, Datum, Rule<Datum, Datum>> = Goal {
-            pattern: goal.pattern.clone(),
-            unification_index: UnificationIndex::Actor(0),
-            subgoals: vec![Goal {
-                               pattern: Datum::from_sexp_str("((current-state 2) ((time ?t1::1)))").expect("SubGoal 1 datum"),
+                                                                                   _a_marker: PhantomData,
+                                                                                   _t_marker: PhantomData,
+                                                                               }, // Fifth goal
+                                                                               Goal {
+                                                                                   pattern: goal.pattern.clone(),
+                                                                                   unification_index:
+                                                                                       UnificationIndex::Actor(0),
+                                                                                   subgoals: vec![Goal {
+                               pattern: Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
                                unification_index: UnificationIndex::Datum(0),
                                subgoals: vec![],
                                _a_marker: PhantomData,
                                _t_marker: PhantomData,
                            },
                            Goal {
-                               pattern: Datum::from_sexp_str("((action 2) ((time ?t1::1)))").expect("SubGoal 2 datum"),
+                               pattern: Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
                                unification_index: UnificationIndex::Actor(1),
                                subgoals: Vec::new(),
                                _a_marker: PhantomData,
                                _t_marker: PhantomData,
                            }],
-            _a_marker: PhantomData,
-            _t_marker: PhantomData,
-        };
-        let stepped_goal_5 = stepped_goal_4.step(&data_refs, &rule_refs, 2).expect("Third plan");
-        print!("\nPrevious Goal tree:\n{}\n", stepped_goal_4);
-        print!("\nExpected Goal tree:\n{}\n", expected_stepped_goal_5);
-        print!("\nStepped Goal tree:\n{}\n", stepped_goal_5);
-        assert_eq!(stepped_goal_5,
-                   expected_stepped_goal_5,
-                   "Fifth stepped goal");
-
-        // Test step 6
-        let expected_stepped_goal_6: Goal<Datum, Datum, Rule<Datum, Datum>> = Goal {
-            pattern: goal.pattern.clone(),
-            unification_index: UnificationIndex::Actor(0),
-            subgoals: vec![Goal {
-                               pattern: Datum::from_sexp_str("((current-state 2) ((time ?t1::2)))").expect("SubGoal 1 datum"),
-                               unification_index: UnificationIndex::Actor(0),
-                               subgoals: vec![Goal {
-                                                  pattern: Datum::from_sexp_str("((current-state 0) ((time 0)))")
-                                                      .expect("SubGoal 1.1 datum"),
-                                                  unification_index: UnificationIndex::Datum(0),
-                                                  subgoals: Vec::new(),
-                                                  _a_marker: PhantomData,
-                                                  _t_marker: PhantomData,
-                                              },
-                                              Goal {
-                                                  pattern: Datum::from_sexp_str("((action 2) ((time ?t0::2)))")
-                                                      .expect("SubGoal 1.2 datum"),
-                                                  unification_index: UnificationIndex::Actor(1),
-                                                  subgoals: Vec::new(),
-                                                  _a_marker: PhantomData,
-                                                  _t_marker: PhantomData,
-                                              }],
+                                                                                   _a_marker: PhantomData,
+                                                                                   _t_marker: PhantomData,
+                                                                               }, // Sixth goal
+                                                                               Goal {
+                                                                                   pattern: goal.pattern.clone(),
+                                                                                   unification_index:
+                                                                                       UnificationIndex::Actor(2),
+                                                                                   subgoals: vec![Goal {
+                               pattern: Datum::from_sexp_str("((current-state 3) ((time ?t1::4)))").expect("SubGoal 1 datum"),
+                               unification_index: UnificationIndex::Init,
+                               subgoals: vec![],
                                _a_marker: PhantomData,
                                _t_marker: PhantomData,
                            },
                            Goal {
-                               pattern: Datum::from_sexp_str("((action 2) ((time ?t1::2)))").expect("SubGoal 2 datum"),
-                               unification_index: UnificationIndex::Actor(1),
+                               pattern: Datum::from_sexp_str("((action 1) ((time ?t1::4)))").expect("SubGoal 2 datum"),
+                               unification_index: UnificationIndex::Init,
                                subgoals: Vec::new(),
                                _a_marker: PhantomData,
                                _t_marker: PhantomData,
                            }],
-            _a_marker: PhantomData,
-            _t_marker: PhantomData,
-        };
-        println!("STEPPING AGAIN\n\n");
-        let stepped_goal_6 = stepped_goal_5.step(&data_refs, &rule_refs, 2).expect("Third plan");
+                                                                                   _a_marker: PhantomData,
+                                                                                   _t_marker: PhantomData,
+                                                                               }];
+        let mut stepped_goal = goal.step(&data_refs, &rule_refs, 2).expect("Initial plan");
 
-        print!("\nPrevious Goal tree:\n{}\n", stepped_goal_5);
-        print!("\nExpected Goal tree:\n{}\n", expected_stepped_goal_6);
-        print!("\nStepped Goal tree:\n{}\n", stepped_goal_6);
-        assert_eq!(stepped_goal_6,
-                   expected_stepped_goal_6,
-                   "Second stepped goal");
-
-        assert_eq!(true, false);
+        for (idx, expected_stepped_goal) in expected_steps.into_iter().enumerate() {
+            println!("Step {}\n----Expected:\n{}\n\n----Actual:\n{}\n\n",
+                     idx + 1,
+                     expected_stepped_goal,
+                     stepped_goal);
+            assert_eq!(stepped_goal,
+                       expected_stepped_goal,
+                       "Stepped goal not as expected");
+            stepped_goal = stepped_goal.step(&data_refs, &rule_refs, idx).expect("Initial plan");
+        }
     }
 }
