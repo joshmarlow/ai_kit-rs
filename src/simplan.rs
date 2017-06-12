@@ -41,6 +41,14 @@ impl<T: BindingsValue> PlanParameters<T> {
         }
     }
 
+    pub fn empty() -> Self {
+        PlanParameters {
+            bindings: Bindings::new(),
+            constraints: Vec::new(),
+            used_data: HashSet::new(),
+        }
+    }
+
     pub fn solve_constraints(&self) -> Option<Bindings<T>> {
         Constraint::solve_many(self.constraints.iter().collect(), &self.bindings).ok()
     }
@@ -63,6 +71,52 @@ pub struct PlanningConfig {
     pub max_depth: usize,
     pub reuse_data: bool,
 }
+
+pub fn solve_subgoals<T: BindingsValue, U: Unify<T>, A: Apply<T, U>>(subgoals: Vec<&mut Subgoal<T, U, A>>,
+                                                                     idx: usize,
+                                                                     data: &Vec<&U>,
+                                                                     rules: &Vec<&A>,
+                                                                     plan_parameters: &PlanParameters<T>,
+                                                                     max_depth: usize)
+                                                                     -> Option<PlanParameters<T>> {
+    let mut subgoals = subgoals;
+    let subgoal_count = subgoals.len();
+    let is_last_goal = |idx| idx == subgoal_count;
+    let is_first_goal = |idx| idx == 0;
+
+    let mut idx = idx;
+    let mut param_stack: Vec<PlanParameters<T>> = vec![plan_parameters.clone()]
+        .into_iter()
+        .chain(subgoals.iter()
+            .map(|sg| sg.current_plan_parameters.clone()))
+        .collect();
+
+    if subgoal_count == 0 {
+        Some(plan_parameters.clone())
+    } else {
+        loop {
+            let current_plan_parameters_opt = {
+                let ref mut subgoal = subgoals[idx];
+                subgoal.current_plan_parameters = param_stack[idx].clone();
+                subgoal.sub_plan(data, rules, max_depth - 1)
+            };
+            if let Some(current_plan_parameters) = current_plan_parameters_opt {
+                param_stack[idx + 1] = current_plan_parameters.clone();
+                idx += 1;
+                if is_last_goal(idx) {
+                    return Some(current_plan_parameters);
+                }
+            } else {
+                if is_first_goal(idx) {
+                    return None;
+                } else {
+                    idx -= 1;
+                }
+            }
+        }
+    }
+}
+
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Subgoal<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> {
@@ -126,6 +180,44 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Subgoal<T, U, A> {
     }
 
     pub fn sub_plan(&mut self, data: &Vec<&U>, rules: &Vec<&A>, max_depth: usize) -> Option<PlanParameters<T>> {
+        // Try to have subgoals replan before changing subgoals
+        loop {
+            let initial_plan_parameters = self.current_plan_parameters.clone();
+            let subgoal_count = self.subgoals.len();
+            if subgoal_count > 0 {
+                let plan_parameters = if subgoal_count > 2 {
+                    self.subgoals[subgoal_count - 2].current_plan_parameters.clone()
+                } else {
+                    initial_plan_parameters.clone()
+                };
+                if let Some(parameters) = solve_subgoals(self.subgoals.iter_mut().collect(),
+                                                         subgoal_count - 1,
+                                                         data,
+                                                         rules,
+                                                         &plan_parameters,
+                                                         max_depth) {
+                    return Some(parameters);
+                }
+            }
+            // Subgoals can't find a solution, so replan subgoals
+            if self.increment_unification_index(data.len(), rules.len()) == SubgoalUnificationIndex::Exhausted {
+                return None;
+            }
+            if let Some(plan_parameters) = self.satisfied(data, rules, max_depth) {
+                if let Some(bindings) = plan_parameters.solve_constraints() {
+                    return Some(PlanParameters {
+                        bindings: bindings,
+                        constraints: plan_parameters.constraints.clone(),
+                        used_data: plan_parameters.used_data.clone(),
+                    });
+                }
+            }
+            // Reset parameters and try again
+            self.current_plan_parameters = initial_plan_parameters.clone();
+        }
+    }
+
+    pub fn sub_plan_legacy(&mut self, data: &Vec<&U>, rules: &Vec<&A>, max_depth: usize) -> Option<PlanParameters<T>> {
         let initial_plan_parameters = self.current_plan_parameters.clone();
         loop {
             if self.increment_unification_index(data.len(), rules.len()) == SubgoalUnificationIndex::Exhausted {
@@ -157,15 +249,10 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Subgoal<T, U, A> {
         match self.unification_index {
             SubgoalUnificationIndex::Datum(idx) => {
                 if self.can_use_datum(idx) {
-                    self.log(max_depth,
-                             format!("Trying to unify: {} with {}", self.pattern, data[idx]));
                     data[idx].unify(&self.pattern, &self.current_plan_parameters.bindings).and_then(|bindings| {
-                        self.log(max_depth, format!("\tunified!: {}", bindings));
-                        self.current_plan_parameters = PlanParameters {
-                            bindings: bindings,
-                            constraints: self.current_plan_parameters.constraints.clone(),
-                            used_data: self.current_plan_parameters.used_data.clone(),
-                        };
+                        self.log(max_depth,
+                                 format!("Unified: {} with {}", self.pattern, data[idx]));
+                        self.current_plan_parameters.bindings = bindings;
                         self.current_plan_parameters.used_data.insert(idx);
                         Some(self.current_plan_parameters.clone())
                     })
@@ -175,28 +262,26 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Subgoal<T, U, A> {
             }
             SubgoalUnificationIndex::Actor(idx) => {
                 let rule = rules[idx].snowflake(self.construct_snowflake_prefix());
-                self.log(max_depth,
-                         format!("Trying to apply: {}, {}", self.pattern, rule));
                 rule.r_apply(&self.pattern, &self.current_plan_parameters.bindings).and_then(|(subgoal_patterns, bindings)| {
-                    self.log(max_depth, format!("\tapplied!: {}", bindings));
+                    self.log(max_depth, format!("Applied: {}", self.pattern));
+                    for sgp in subgoal_patterns.iter() {
+                        self.log(max_depth, format!("\tSubgoal: {}", sgp));
+                    }
                     let mut updated_constraints = self.current_plan_parameters.constraints.clone();
                     updated_constraints.extend(rule.constraints().into_iter().cloned());
 
                     Constraint::solve_many(updated_constraints.iter().collect(), &bindings).ok().and_then(|bindings| {
-                        let current_plan_parameters = PlanParameters {
-                            bindings: bindings,
-                            constraints: updated_constraints.clone(),
-                            used_data: self.current_plan_parameters.used_data.clone(),
-                        };
-                        self.current_plan_parameters = current_plan_parameters.clone();
+                        self.current_plan_parameters.bindings = bindings;
+                        self.current_plan_parameters.constraints = updated_constraints;
                         self.subgoals = subgoal_patterns.into_iter()
                             .map(|sg_p| Subgoal::new(sg_p, &self.current_plan_parameters, self.config.clone()))
                             .collect();
-                        if self.subgoals.len() > 0 {
-                            self.solve_subgoal(0, data, rules, current_plan_parameters.clone(), max_depth)
-                        } else {
-                            Some(self.current_plan_parameters.clone())
-                        }
+                        solve_subgoals(self.subgoals.iter_mut().collect(),
+                                       0,
+                                       data,
+                                       rules,
+                                       &self.current_plan_parameters,
+                                       max_depth)
                     })
                 })
             }
@@ -205,39 +290,9 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Subgoal<T, U, A> {
         }
     }
 
-    pub fn solve_subgoal(&mut self,
-                         idx: usize,
-                         data: &Vec<&U>,
-                         rules: &Vec<&A>,
-                         plan_parameters: PlanParameters<T>,
-                         max_depth: usize)
-                         -> Option<PlanParameters<T>> {
-        let subgoal_count = self.subgoals.len();
-        loop {
-            let current_plan_parameters_opt = {
-                let ref mut subgoal = self.subgoals[idx];
-                subgoal.current_plan_parameters = plan_parameters.clone();
-                subgoal.sub_plan(data, rules, max_depth - 1)
-            };
-            if let Some(current_plan_parameters) = current_plan_parameters_opt {
-                if idx + 1 == subgoal_count {
-                    return Some(current_plan_parameters);
-                } else {
-                    let result = self.solve_subgoal(idx + 1, data, rules, current_plan_parameters, max_depth);
-                    if result.is_some() {
-                        // Subsequent goals satisfied, return solution
-                        return result;
-                    }
-                }
-            } else {
-                return None;
-            }
-        }
-    }
-
     pub fn apply_bindings(&self, bindings: &Bindings<T>) -> Self {
         let mut root = self.clone();
-        root.pattern = root.pattern.apply_bindings(bindings).unwrap();
+        root.pattern = root.pattern.apply_bindings(bindings).expect("Bindings should be applicable");
         root.subgoals = root.subgoals.iter().map(|sg| sg.apply_bindings(&bindings)).collect();
         root
     }
@@ -286,7 +341,9 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Subgoal<T, U, A> {
     }
 
     pub fn construct_snowflake_prefix(&self) -> String {
-        Uuid::new_v4().to_string()
+        let mut s = Uuid::new_v4().to_string();
+        s.truncate(5);
+        s
     }
 
     /// Traverse the subgoal tree using a depth-first search and gather the leaves of the plan
@@ -294,7 +351,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Subgoal<T, U, A> {
         let mut leaves = Vec::new();
 
         if self.subgoals.is_empty() {
-            leaves.push(self.pattern.apply_bindings(&plan_parameters.bindings).unwrap());
+            leaves.push(self.pattern.apply_bindings(&plan_parameters.bindings).expect("Bindings should be applicable"));
         } else {
             for sg in self.subgoals.iter() {
                 leaves.extend(sg.gather_leaves(plan_parameters).into_iter());
@@ -317,7 +374,7 @@ mod simplan_tests {
     use core::{Bindings, ToSexp};
     use datum::Datum;
     use infer::Rule;
-    use super::{PlanningConfig, PlanParameters, Subgoal};
+    use super::*;
 
     pub fn setup_rules() -> Vec<Rule<Datum, Datum>> {
         let physics_rule = Rule::from_sexp_str(r#"(defrule (((timeline-entry ((current-state ?s1) ((time ?t1)) ()))
@@ -345,15 +402,67 @@ mod simplan_tests {
     }
 
     #[test]
+    fn test_solve_subgoals_when_all_init() {
+        let rules = setup_rules();
+        let data = vec![Datum::from_sexp_str("(timeline-entry ((current-state 0) ((time 0)) ()))").unwrap()];
+
+        let config = PlanningConfig {
+            debug: true,
+            max_depth: 5,
+            reuse_data: true,
+        };
+        let mut initial_plan_parameters = PlanParameters::empty();
+        initial_plan_parameters.bindings.set_binding_mut(&"?s0".to_string(), Datum::Int(2));
+
+        let mut subgoals: Vec<Subgoal<Datum, Datum, Rule<Datum, Datum>>> =
+            vec![Subgoal::new(Datum::from_sexp_str(&"(timeline-entry ((current-state 2) ((time ?t)) ()))".to_string())
+                                  .unwrap(),
+                              &PlanParameters::empty(),
+                              config.clone()),
+                 Subgoal::new(Datum::from_sexp_str(&"(timeline-entry ((action 2) ((time ?t)) ()))".to_string()).unwrap(),
+                              &PlanParameters::empty(),
+                              config.clone())];
+
+        println!("\n");
+
+        // Construct initial plan and verify it is as expected
+        let plan_parameters = solve_subgoals(subgoals.iter_mut().collect(),
+                                             0,
+                                             &data.iter().collect(),
+                                             &rules.iter().collect(),
+                                             &initial_plan_parameters,
+                                             config.max_depth);
+        assert_eq!(plan_parameters.is_some(), true);
+        assert_eq!(subgoals[0].unification_index,
+                   SubgoalUnificationIndex::Actor(0));
+        assert_eq!(subgoals[1].unification_index,
+                   SubgoalUnificationIndex::Actor(1));
+
+        println!("\n\n******** REPLANNING ********\n\n");
+        // Replan and verify expectations
+        let plan_parameters = solve_subgoals(subgoals.iter_mut().collect(),
+                                             0,
+                                             &data.iter().collect(),
+                                             &rules.iter().collect(),
+                                             &initial_plan_parameters,
+                                             config.max_depth);
+        assert_eq!(plan_parameters.is_some(), true);
+        assert_eq!(subgoals[0].unification_index,
+                   SubgoalUnificationIndex::Actor(0));
+        assert_eq!(subgoals[1].unification_index,
+                   SubgoalUnificationIndex::Actor(1));
+    }
+
+    #[test]
     fn test_plan_with_goal_constraint() {
         let rules = setup_rules();
         let constraints: Vec<super::Constraint<Datum>> = vec!["(constraint-set (?min_time 2))",
                                                               "(constraint-greater-than (?t2 ?min_time))"]
             .into_iter()
-            .map(|s| super::Constraint::from_sexp_str(s).unwrap())
+            .map(|s| super::Constraint::from_sexp_str(s).expect("Expected constraint to be parsed"))
             .collect();
-        let data = vec![Datum::from_sexp_str("(timeline-entry ((current-state 0) ((time 1)) ()))").unwrap()];
-        let goal_pattern = Datum::from_sexp_str("(timeline-entry ((current-state 2) ((time ?t2)) ()))").unwrap();
+        let data = vec![Datum::from_sexp_str("(timeline-entry ((current-state 0) ((time 1)) ()))").expect("d1")];
+        let goal_pattern = Datum::from_sexp_str("(timeline-entry ((current-state 2) ((time ?t2)) ()))").expect("d2");
 
         let mut goal = Subgoal::new(goal_pattern,
                                     &PlanParameters {
@@ -370,7 +479,8 @@ mod simplan_tests {
         let plan_parameters = goal.plan(&data.iter().collect(), &rules.iter().collect());
         assert_eq!(plan_parameters.is_some(), true);
         let plan_parameters = plan_parameters.unwrap();
-        assert_eq!(plan_parameters.bindings.get_binding(&"?t2".to_string()).unwrap(),
+        println!("{}", plan_parameters);
+        assert_eq!(plan_parameters.bindings.get_binding(&"?t2".to_string()).expect("Expected valuel"),
                    Datum::from_float(3.0));
     }
 
@@ -394,7 +504,6 @@ mod simplan_tests {
 
         let plan_parameters = goal.plan(&data.iter().collect(), &rules.iter().collect());
         assert_eq!(plan_parameters.is_some(), true);
-        println!("\n{}", goal);
 
         let expected_leaves: Vec<Datum> = vec![Datum::from_sexp_str(&"(timeline-entry ((current-state 0) ((time 1)) ()))")
                                                    .unwrap(),
@@ -411,6 +520,16 @@ mod simplan_tests {
                                                Datum::from_sexp_str(&"(timeline-entry ((action 1) ((time 1)) ()))").unwrap(),
                                                Datum::from_sexp_str(&"(timeline-entry ((action 1) ((time 2)) ()))").unwrap()];
         let actual_leaves = goal.gather_leaves(&plan_parameters.unwrap());
+        println!("\n");
+        print!("{}", goal);
+        println!("Actual\n");
+        for l in actual_leaves.iter() {
+            println!("\t{}", l);
+        }
+        println!("Expected\n");
+        for l in expected_leaves.iter() {
+            println!("\t{}", l);
+        }
         assert_eq!(actual_leaves, expected_leaves);
     }
 
