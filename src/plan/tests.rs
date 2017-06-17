@@ -75,18 +75,22 @@ mod fplan_tests {
         vec![physics_rule, interaction_model_add_2, physics_rule_2, interaction_model_add_1]
     }
 
-    #[test]
-    fn test_initial_increment_of_root_goal() {
-        let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
-        let rules = setup_rules();
-        let data_refs: Vec<&Datum> = data.iter().collect();
-        let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
+    #[cfg(test)]
+    mod increment_tests {
+        use super::*;
 
-        let goal = Goal::new(Datum::from_sexp_str("((current-state 4) ((time ?t)))").expect("Goal datum"),
-                             UnificationIndex::Init,
-                             Vec::new());
+        #[test]
+        fn test_initial_increment_of_root_goal() {
+            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
+            let rules = setup_rules();
+            let data_refs: Vec<&Datum> = data.iter().collect();
+            let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
 
-        let expected_increments: Vec<Goal<Datum, Datum, Rule<Datum, Datum>>> = vec![// First goal
+            let goal = Goal::new(Datum::from_sexp_str("((current-state 4) ((time ?t)))").expect("Goal datum"),
+                                 UnificationIndex::Init,
+                                 Vec::new());
+
+            let expected_increments: Vec<Goal<Datum, Datum, Rule<Datum, Datum>>> = vec![// First goal
                  Goal::new(goal.pattern.clone(), UnificationIndex::Datum(0), Vec::new()),
                  // Second goal
                  Goal::new(goal.pattern.clone(),
@@ -138,17 +142,76 @@ mod fplan_tests {
                                 Goal::new(Datum::from_sexp_str("((action 1) ((time ?t1::4)))").expect("SubGoal 2 datum"),
                                           UnificationIndex::Init,
                                           Vec::new())])];
-        let mut incrementped_goal = goal.increment(&data_refs, &rule_refs, 2).expect("Initial plan");
+            let mut incrementped_goal = goal.increment(&data_refs, &rule_refs, 2).expect("Initial plan");
 
-        for (idx, expected_incrementped_goal) in expected_increments.into_iter().enumerate() {
-            println!("Step {}\n----Expected:\n{}\n\n----Actual:\n{}\n\n",
-                     idx,
-                     expected_incrementped_goal,
-                     incrementped_goal);
-            assert_eq!(incrementped_goal,
-                       expected_incrementped_goal,
-                       "Stepped goal not as expected");
-            incrementped_goal = incrementped_goal.increment(&data_refs, &rule_refs, idx).expect("Initial plan");
+            for (idx, expected_incrementped_goal) in expected_increments.into_iter().enumerate() {
+                println!("Step {}\n----Expected:\n{}\n\n----Actual:\n{}\n\n",
+                         idx,
+                         expected_incrementped_goal,
+                         incrementped_goal);
+                assert_eq!(incrementped_goal,
+                           expected_incrementped_goal,
+                           "Stepped goal not as expected");
+                incrementped_goal = incrementped_goal.increment(&data_refs, &rule_refs, idx).expect("Initial plan");
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod satisfaction_tests {
+        use super::*;
+
+        #[test]
+        fn test_goal_satisfied_returns_true_for_satisfying_datum() {
+            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
+            let data_refs: Vec<&Datum> = data.iter().collect();
+
+            let goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
+                Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t)))").expect("Goal datum"),
+                          UnificationIndex::Datum(0),
+                          Vec::new());
+            let expected_bindings: Bindings<Datum> = vec![("?t".to_string(), Datum::Float(0.0))].into_iter().collect();
+            assert_eq!(goal.satisifed(&data_refs, &Bindings::new()),
+                       Some(expected_bindings));
+        }
+
+        #[test]
+        fn test_goal_satisfied_returns_false_for_non_satisfying_datum() {
+            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
+            let data_refs: Vec<&Datum> = data.iter().collect();
+
+            let goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
+                Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t)))").expect("Goal datum"),
+                          UnificationIndex::Datum(0),
+                          Vec::new());
+            assert_eq!(goal.satisifed(&data_refs, &Bindings::new()), None);
+        }
+
+        #[test]
+        fn test_goal_satisfied_returns_true_for_satisfied_nested_plan() {
+            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
+            let data_refs: Vec<&Datum> = data.iter().collect();
+
+            let goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
+                Goal::new(Datum::from_sexp_str("((current-state 4) ((time ?t)))").expect("Goal datum"),
+                          UnificationIndex::Actor(0),
+                          vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))")
+                                             .expect("SubGoal 1 datum"),
+                                         UnificationIndex::Actor(0),
+                                         vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1::2)))")
+                                                            .expect("SubGoal 1 datum"),
+                                                        UnificationIndex::Datum(0),
+                                                        Vec::new()),
+                                              Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::2)))")
+                                                            .expect("SubGoal 1 datum"),
+                                                        UnificationIndex::Actor(1),
+                                                        Vec::new())]),
+                               Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
+                                         UnificationIndex::Actor(1),
+                                         Vec::new())]);
+            let expected_bindings: Bindings<Datum> = vec![("?t1::2".to_string(), Datum::Float(0.0))].into_iter().collect();
+            assert_eq!(goal.satisifed(&data_refs, &Bindings::new()),
+                       Some(expected_bindings));
         }
     }
 }

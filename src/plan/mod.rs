@@ -1,4 +1,6 @@
 use core::{Apply, Bindings, BindingsValue, Unify};
+use itertools::Itertools;
+use itertools::FoldWhile::{Continue, Done};
 use std;
 use std::marker::PhantomData;
 
@@ -150,16 +152,36 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
     }
 
     /// Determine if the plan is valid
-    pub fn satisifed(&self) -> bool {
-        // Determine if all leaves can be unified with known data
-        false
+    pub fn satisifed(&self, data: &Vec<&U>, bindings: &Bindings<T>) -> Option<Bindings<T>> {
+        println!("#### Checking satisfaction - {}", self);
+        match self.unification_index {
+            UnificationIndex::Datum(datum_idx) => {
+                println!("#### Comparing {} with {}, results: {}",
+                         self.pattern,
+                         data[datum_idx],
+                         self.pattern.unify(data[datum_idx], bindings).is_some());
+                self.pattern.unify(data[datum_idx], bindings)
+            }
+            UnificationIndex::Actor(_actor_idx) => {
+                self.subgoals.iter().fold_while(Some(bindings.clone()), |bindings, subgoal| {
+                    let bindings = subgoal.satisifed(data, bindings.as_ref().unwrap());
+                    if bindings.is_some() {
+                        Continue(bindings)
+                    } else {
+                        Done(None)
+                    }
+                })
+            }
+            UnificationIndex::Init => self.pattern.unify(&U::nil(), &bindings),
+            UnificationIndex::Exhausted => None,
+        }
     }
 
     pub fn create_subgoals(r_pattern: &U, idx: usize, rules: &Vec<&A>, snowflake_prefix_id: usize) -> Option<Vec<Self>> {
         let rule = rules[idx].snowflake(format!("{}", snowflake_prefix_id));
-        rule.r_apply(r_pattern, &Bindings::new()).and_then(|(subgoal_patterns, _bindings)| {
+        rule.r_apply(r_pattern, &Bindings::new()).and_then(|(subgoal_patterns, bindings)| {
             Some(subgoal_patterns.into_iter()
-                .map(Goal::with_pattern)
+                .map(|pattern| Goal::with_pattern(pattern.apply_bindings(&bindings).unwrap()))
                 .collect())
         })
     }
