@@ -26,13 +26,6 @@ impl std::fmt::Display for UnificationIndex {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PlanningConfig {
-    pub debug: bool,
-    pub max_depth: usize,
-    pub reuse_data: bool,
-}
-
 fn increment_unification_index(current_unification_index: &UnificationIndex,
                                datum_count: usize,
                                rule_count: usize)
@@ -122,12 +115,15 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
     }
 
     /// Construct a mutated plan
-    pub fn increment(&self, data: &Vec<&U>, rules: &Vec<&A>, snowflake_prefix_id: usize) -> Option<Self> {
+    pub fn increment(&self, data: &Vec<&U>, rules: &Vec<&A>, snowflake_prefix_id: usize, max_depth: usize) -> Option<Self> {
+        if max_depth == 0 {
+            return None;
+        }
         let mut goal = self.clone();
 
         // If there are any subgoals, increment them first
         if !self.subgoals.is_empty() {
-            if let Some(subgoals) = self.increment_subgoals(data, rules, snowflake_prefix_id) {
+            if let Some(subgoals) = self.increment_subgoals(data, rules, snowflake_prefix_id, max_depth) {
                 goal.subgoals = subgoals;
                 return Some(goal);
             }
@@ -179,15 +175,36 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
         })
     }
 
-    pub fn increment_subgoals(&self, data: &Vec<&U>, rules: &Vec<&A>, snowflake_prefix_id: usize) -> Option<Vec<Self>> {
-        let unification_indices = self.subgoals.iter().map(|sg| sg.unification_index.clone()).collect();
-        first_subgoal_to_increment(&unification_indices).and_then(|idx| {
-            self.subgoals[idx].increment(data, rules, snowflake_prefix_id).and_then(|new_subgoal| {
-                let mut subgoals = self.subgoals.clone();
-                subgoals[idx] = new_subgoal;
-                Some(subgoals)
-            })
-        })
+    pub fn increment_subgoals(&self,
+                              data: &Vec<&U>,
+                              rules: &Vec<&A>,
+                              snowflake_prefix_id: usize,
+                              max_depth: usize)
+                              -> Option<Vec<Self>> {
+        let mut subgoals = self.subgoals.clone();
+        let subgoal_count = subgoals.len();
+        let is_last_subgoal = |idx| idx + 1 == subgoal_count;
+        for _i in 0..10 {
+            let unification_indices = subgoals.iter().map(|sg| sg.unification_index.clone()).collect();
+            let subgoal_idx_to_increment = first_subgoal_to_increment(&unification_indices);
+            match subgoal_idx_to_increment {
+                None => return None,
+                Some(idx) => {
+                    if let Some(new_subgoal) = subgoals[idx].increment(data, rules, snowflake_prefix_id, max_depth - 1) {
+                        subgoals[idx] = new_subgoal;
+
+                        if is_last_subgoal(idx) {
+                            return Some(subgoals);
+                        } else {
+                            subgoals[idx + 1].unification_index = UnificationIndex::Init;
+                        }
+                    } else {
+                        subgoals[idx].unification_index = UnificationIndex::Exhausted;
+                    }
+                }
+            }
+        }
+        None
     }
 
     pub fn pprint(&self, ntabs: usize) -> String {
@@ -206,5 +223,71 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
 impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> std::fmt::Display for Goal<T, U, A> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         write!(f, "Goal tree:\n{}", self.pprint(1))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PlanningConfig {
+    pub max_depth: usize,
+    pub reuse_data: bool,
+}
+
+impl Default for PlanningConfig {
+    fn default() -> Self {
+        PlanningConfig {
+            max_depth: 3,
+            reuse_data: true,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Planner<'a, T: BindingsValue, U: 'a + Unify<T>, A: 'a + Apply<T, U>> {
+    bindings: Bindings<T>,
+    config: PlanningConfig,
+    data: Vec<&'a U>,
+    goal: Goal<T, U, A>,
+    max_increments: usize,
+    total_increments: usize,
+    rules: Vec<&'a A>,
+}
+
+impl<'a, T: BindingsValue, U: 'a + Unify<T>, A: 'a + Apply<T, U>> Planner<'a, T, U, A> {
+    pub fn new(goal: &Goal<T, U, A>,
+               bindings: &Bindings<T>,
+               config: &PlanningConfig,
+               data: Vec<&'a U>,
+               rules: Vec<&'a A>,
+               max_increments: usize)
+               -> Planner<'a, T, U, A> {
+        Planner {
+            bindings: bindings.clone(),
+            config: config.clone(),
+            data: data,
+            goal: goal.clone(),
+            max_increments: max_increments,
+            total_increments: 0,
+            rules: rules,
+        }
+    }
+}
+
+impl<'a, T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Iterator for Planner<'a, T, U, A> {
+    type Item = (Goal<T, U, A>, Bindings<T>);
+
+    fn next(&mut self) -> Option<(Goal<T, U, A>, Bindings<T>)> {
+        for i in self.total_increments..self.max_increments {
+            self.total_increments += 1;
+
+            if let Some(goal) = self.goal.increment(&self.data, &self.rules, i, self.config.max_depth) {
+                self.goal = goal;
+                if let Some(bindings) = self.goal.satisifed(&self.data, &self.bindings) {
+                    return Some((self.goal.clone(), bindings));
+                }
+            } else {
+                break;
+            }
+        }
+        None
     }
 }
