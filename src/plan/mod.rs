@@ -133,7 +133,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
             }
         }
 
-        // If subgoals cannot be incrementped, increment this goal
+        // If subgoals cannot be incremented, increment this goal
         loop {
             goal.unification_index = increment_unification_index(&goal.unification_index, data.len(), rules.len());
             match goal.unification_index {
@@ -144,7 +144,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
                         return Some(goal);
                     }
                 }
-                // If this goal cannot be incrementped, return None
+                // If this goal cannot be incremented, return None
                 UnificationIndex::Exhausted => return None,
                 UnificationIndex::Init => panic!("Init after incrementing; this should never happen"),
             }

@@ -142,17 +142,17 @@ mod fplan_tests {
                                 Goal::new(Datum::from_sexp_str("((action 1) ((time ?t1::4)))").expect("SubGoal 2 datum"),
                                           UnificationIndex::Init,
                                           Vec::new())])];
-            let mut incrementped_goal = goal.increment(&data_refs, &rule_refs, 2).expect("Initial plan");
+            let mut incremented_goal = goal.increment(&data_refs, &rule_refs, 2).expect("Initial plan");
 
-            for (idx, expected_incrementped_goal) in expected_increments.into_iter().enumerate() {
+            for (idx, expected_incremented_goal) in expected_increments.into_iter().enumerate() {
                 println!("Step {}\n----Expected:\n{}\n\n----Actual:\n{}\n\n",
                          idx,
-                         expected_incrementped_goal,
-                         incrementped_goal);
-                assert_eq!(incrementped_goal,
-                           expected_incrementped_goal,
+                         expected_incremented_goal,
+                         incremented_goal);
+                assert_eq!(incremented_goal,
+                           expected_incremented_goal,
                            "Stepped goal not as expected");
-                incrementped_goal = incrementped_goal.increment(&data_refs, &rule_refs, idx).expect("Initial plan");
+                incremented_goal = incremented_goal.increment(&data_refs, &rule_refs, idx).expect("Initial plan");
             }
         }
     }
