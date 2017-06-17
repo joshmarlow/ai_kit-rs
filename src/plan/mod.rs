@@ -153,15 +153,8 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
 
     /// Determine if the plan is valid
     pub fn satisifed(&self, data: &Vec<&U>, bindings: &Bindings<T>) -> Option<Bindings<T>> {
-        println!("#### Checking satisfaction - {}", self);
         match self.unification_index {
-            UnificationIndex::Datum(datum_idx) => {
-                println!("#### Comparing {} with {}, results: {}",
-                         self.pattern,
-                         data[datum_idx],
-                         self.pattern.unify(data[datum_idx], bindings).is_some());
-                self.pattern.unify(data[datum_idx], bindings)
-            }
+            UnificationIndex::Datum(datum_idx) => self.pattern.unify(data[datum_idx], bindings),
             UnificationIndex::Actor(_actor_idx) => {
                 self.subgoals.iter().fold_while(Some(bindings.clone()), |bindings, subgoal| {
                     let bindings = subgoal.satisifed(data, bindings.as_ref().unwrap());
