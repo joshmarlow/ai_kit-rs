@@ -8,37 +8,37 @@ mod fplan_tests {
     use super::*;
 
     #[cfg(test)]
-    mod first_subgoal_to_step_tests {
+    mod first_subgoal_to_increment_tests {
         use super::*;
 
         #[test]
-        fn test_first_subgoal_to_step_with_all_init() {
+        fn test_first_subgoal_to_increment_with_all_init() {
             let subgoals = vec![UnificationIndex::Init, UnificationIndex::Init];
-            assert_eq!(first_subgoal_to_step(&subgoals), Some(0));
+            assert_eq!(first_subgoal_to_increment(&subgoals), Some(0));
         }
 
         #[test]
-        fn test_first_subgoal_to_step_with_partial_init() {
+        fn test_first_subgoal_to_increment_with_partial_init() {
             let subgoals = vec![UnificationIndex::Datum(0), UnificationIndex::Init];
-            assert_eq!(first_subgoal_to_step(&subgoals), Some(1));
+            assert_eq!(first_subgoal_to_increment(&subgoals), Some(1));
         }
 
         #[test]
-        fn test_first_subgoal_to_step_with_no_init() {
+        fn test_first_subgoal_to_increment_with_no_init() {
             let subgoals = vec![UnificationIndex::Datum(0), UnificationIndex::Datum(1)];
-            assert_eq!(first_subgoal_to_step(&subgoals), Some(1));
+            assert_eq!(first_subgoal_to_increment(&subgoals), Some(1));
         }
 
         #[test]
-        fn test_first_subgoal_to_step_with_exhausted_subgoal() {
+        fn test_first_subgoal_to_increment_with_exhausted_subgoal() {
             let subgoals = vec![UnificationIndex::Datum(0), UnificationIndex::Exhausted];
-            assert_eq!(first_subgoal_to_step(&subgoals), Some(0));
+            assert_eq!(first_subgoal_to_increment(&subgoals), Some(0));
         }
 
         #[test]
-        fn test_first_subgoal_to_step_with_all_exhausted() {
+        fn test_first_subgoal_to_increment_with_all_exhausted() {
             let subgoals = vec![UnificationIndex::Exhausted, UnificationIndex::Exhausted];
-            assert_eq!(first_subgoal_to_step(&subgoals), None);
+            assert_eq!(first_subgoal_to_increment(&subgoals), None);
         }
     }
 
@@ -76,7 +76,7 @@ mod fplan_tests {
     }
 
     #[test]
-    fn test_initial_step_of_root_goal() {
+    fn test_initial_increment_of_root_goal() {
         let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
         let rules = setup_rules();
         let data_refs: Vec<&Datum> = data.iter().collect();
@@ -86,7 +86,7 @@ mod fplan_tests {
                              UnificationIndex::Init,
                              Vec::new());
 
-        let expected_steps: Vec<Goal<Datum, Datum, Rule<Datum, Datum>>> = vec![// First goal
+        let expected_increments: Vec<Goal<Datum, Datum, Rule<Datum, Datum>>> = vec![// First goal
                  Goal::new(goal.pattern.clone(), UnificationIndex::Datum(0), Vec::new()),
                  // Second goal
                  Goal::new(goal.pattern.clone(),
@@ -138,17 +138,17 @@ mod fplan_tests {
                                 Goal::new(Datum::from_sexp_str("((action 1) ((time ?t1::4)))").expect("SubGoal 2 datum"),
                                           UnificationIndex::Init,
                                           Vec::new())])];
-        let mut stepped_goal = goal.step(&data_refs, &rule_refs, 2).expect("Initial plan");
+        let mut incrementped_goal = goal.increment(&data_refs, &rule_refs, 2).expect("Initial plan");
 
-        for (idx, expected_stepped_goal) in expected_steps.into_iter().enumerate() {
+        for (idx, expected_incrementped_goal) in expected_increments.into_iter().enumerate() {
             println!("Step {}\n----Expected:\n{}\n\n----Actual:\n{}\n\n",
                      idx,
-                     expected_stepped_goal,
-                     stepped_goal);
-            assert_eq!(stepped_goal,
-                       expected_stepped_goal,
+                     expected_incrementped_goal,
+                     incrementped_goal);
+            assert_eq!(incrementped_goal,
+                       expected_incrementped_goal,
                        "Stepped goal not as expected");
-            stepped_goal = stepped_goal.step(&data_refs, &rule_refs, idx).expect("Initial plan");
+            incrementped_goal = incrementped_goal.increment(&data_refs, &rule_refs, idx).expect("Initial plan");
         }
     }
 }

@@ -67,8 +67,8 @@ fn increment_unification_index(current_unification_index: &UnificationIndex,
     }
 }
 
-/// Determine the first subgoal to step
-pub fn first_subgoal_to_step(unification_indices: &Vec<UnificationIndex>) -> Option<usize> {
+/// Determine the first subgoal to increment
+pub fn first_subgoal_to_increment(unification_indices: &Vec<UnificationIndex>) -> Option<usize> {
     if unification_indices.is_empty() {
         None
     } else {
@@ -120,18 +120,18 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
     }
 
     /// Construct a mutated plan
-    pub fn step(&self, data: &Vec<&U>, rules: &Vec<&A>, snowflake_prefix_id: usize) -> Option<Self> {
+    pub fn increment(&self, data: &Vec<&U>, rules: &Vec<&A>, snowflake_prefix_id: usize) -> Option<Self> {
         let mut goal = self.clone();
 
-        // If there are any subgoals, step them first
+        // If there are any subgoals, increment them first
         if !self.subgoals.is_empty() {
-            if let Some(subgoals) = self.step_subgoals(data, rules, snowflake_prefix_id) {
+            if let Some(subgoals) = self.increment_subgoals(data, rules, snowflake_prefix_id) {
                 goal.subgoals = subgoals;
                 return Some(goal);
             }
         }
 
-        // If subgoals cannot be stepped, step this goal
+        // If subgoals cannot be incrementped, increment this goal
         loop {
             goal.unification_index = increment_unification_index(&goal.unification_index, data.len(), rules.len());
             match goal.unification_index {
@@ -142,7 +142,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
                         return Some(goal);
                     }
                 }
-                // If this goal cannot be stepped, return None
+                // If this goal cannot be incrementped, return None
                 UnificationIndex::Exhausted => return None,
                 UnificationIndex::Init => panic!("Init after incrementing; this should never happen"),
             }
@@ -164,10 +164,10 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
         })
     }
 
-    pub fn step_subgoals(&self, data: &Vec<&U>, rules: &Vec<&A>, snowflake_prefix_id: usize) -> Option<Vec<Self>> {
+    pub fn increment_subgoals(&self, data: &Vec<&U>, rules: &Vec<&A>, snowflake_prefix_id: usize) -> Option<Vec<Self>> {
         let unification_indices = self.subgoals.iter().map(|sg| sg.unification_index.clone()).collect();
-        first_subgoal_to_step(&unification_indices).and_then(|idx| {
-            self.subgoals[idx].step(data, rules, snowflake_prefix_id).and_then(|new_subgoal| {
+        first_subgoal_to_increment(&unification_indices).and_then(|idx| {
+            self.subgoals[idx].increment(data, rules, snowflake_prefix_id).and_then(|new_subgoal| {
                 let mut subgoals = self.subgoals.clone();
                 subgoals[idx] = new_subgoal;
                 Some(subgoals)
