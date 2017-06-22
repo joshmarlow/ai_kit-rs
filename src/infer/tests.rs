@@ -30,8 +30,7 @@ fn test_rule_from_sexp() {
 
 #[test]
 fn test_snowflake() {
-    let rule: Rule<Datum, Datum> = Rule::from_sexp_str("(defrule (((x ?x)) (y ?y) ((constraint-set (?diff \
-                                                                      25.0)) (constraint-sum (?x ?y ?diff)))))")
+    let rule: Rule<Datum, Datum> = Rule::from_sexp_str("(defrule (((x ?x)) (y ?y) ((constraint-set (?diff 25.0)) (constraint-sum (?x ?y ?diff)))))")
         .unwrap();
     let expected_snowflake: Rule<Datum, Datum> = Rule::from_sexp_str("(defrule (((x ?x::test)) (y ?y::test) ((constraint-set \
                                                                       (?diff::test 25.0)) (constraint-sum (?x::test ?y::test \
@@ -43,9 +42,7 @@ fn test_snowflake() {
 
 #[test]
 fn test_rule_application() {
-    let rule = Rule::from_sexp_str("(defrule (((x ?x)) (y ?y) ((constraint-set (?diff 25.0)) (constraint-sum (?x ?y \
-                                    ?diff)))))")
-        .unwrap();
+    let rule = Rule::from_sexp_str("(defrule (((x ?x)) (y ?y) ((constraint-set (?diff 25.0)) (constraint-sum (?x ?y ?diff)))))").unwrap();
     let initial_datum = Datum::from_sexp_str("(x 10.0)").unwrap();
     let expected_datum = Datum::from_sexp_str("(y 15.0)").unwrap();
     let expected_bindings: Bindings<Datum> = vec![("?diff".to_string(), Datum::from_float(25.0)),
@@ -68,16 +65,13 @@ fn test_rule_application_with_no_antecedents() {
 
 #[test]
 fn test_rule_reverse_application() {
-    let rule = Rule::from_sexp_str("(defrule (((x ?x)) (y ?y) ((constraint-set (?diff 25.0)) (constraint-sum (?x ?y \
-                                    ?diff)))))")
-        .unwrap();
+    let rule = Rule::from_sexp_str("(defrule (((x ?x)) (y ?y) ((constraint-set (?sum 25.0)) (constraint-sum (?x ?y ?sum)))))").unwrap();
     let expected_datum = Datum::from_sexp_str("(x 10.0)").unwrap();
     let initial_datum = Datum::from_sexp_str("(y 15.0)").unwrap();
-    let expected_bindings: Bindings<Datum> = vec![("?diff".to_string(), Datum::from_float(25.0)),
-                                                  ("?x".to_string(), Datum::from_float(10.0)),
-                                                  ("?y".to_string(), Datum::from_float(15.0))]
-        .into_iter()
-        .collect();
+    let expected_bindings: Bindings<Datum> =
+        vec![("?sum".to_string(), Datum::from_float(25.0)), ("?x".to_string(), Datum::from_float(10.0)), ("?y".to_string(), Datum::from_float(15.0))]
+            .into_iter()
+            .collect();
     assert_eq!(rule.r_apply(&initial_datum, &Bindings::new()),
                Some((vec![expected_datum], expected_bindings)));
 }
@@ -114,18 +108,17 @@ fn test_forward_chain() {
 
 #[test]
 fn test_chain_until_match() {
-    let rules = vec![Rule::from_sexp_str("(defrule (((current-value ?x)) (current-value ?y) ((constraint-set (?diff 1)) \
-                                          (constraint-sum (?x ?diff ?y)))))")
-                         .unwrap(),
-                     Rule::from_sexp_str("(defrule (((current-value ?x)) (current-value ?y) ((constraint-set (?diff -1)) \
-                                          (constraint-sum (?x ?diff ?y)))))")
-                         .unwrap(),
-                     Rule::from_sexp_str("(defrule (((current-value ?x)) (current-value ?y) ((constraint-set (?factor 2)) \
-                                          (constraint-mul (?x ?factor ?y)))))")
-                         .unwrap(),
-                     Rule::from_sexp_str("(defrule (((current-value ?x)) (current-value ?y) ((constraint-set (?factor 0.5)) \
-                                          (constraint-mul (?x ?factor ?y)))))")
-                         .unwrap()];
+    let rules =
+        vec![Rule::from_sexp_str("(defrule (((current-value ?x)) (current-value ?y) ((constraint-set (?diff 1)) (constraint-sum (?x ?diff ?y)))))")
+                 .unwrap(),
+             Rule::from_sexp_str("(defrule (((current-value ?x)) (current-value ?y) ((constraint-set (?diff -1)) (constraint-sum (?x ?diff ?y)))))")
+                 .unwrap(),
+             Rule::from_sexp_str("(defrule (((current-value ?x)) (current-value ?y) ((constraint-set (?factor 2)) (constraint-mul (?x ?factor \
+                                  ?y)))))")
+                 .unwrap(),
+             Rule::from_sexp_str("(defrule (((current-value ?x)) (current-value ?y) ((constraint-set (?factor 0.5)) (constraint-mul (?x ?factor \
+                                  ?y)))))")
+                 .unwrap()];
 
     let rule_ids = vec!["add_one".to_string(), "subtract_one".to_string(), "double".to_string(), "halve".to_string()];
 

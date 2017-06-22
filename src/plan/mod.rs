@@ -96,6 +96,7 @@ pub fn first_subgoal_to_increment(unification_indices: &Vec<UnificationIndex>) -
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Goal<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> {
+    pub bindings_at_creation: Bindings<T>,
     pub constraints: Vec<Constraint<T>>,
     pub parental_constraints: Vec<Constraint<T>>,
     pub pattern: U,
@@ -109,10 +110,12 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
     pub fn new(pattern: U,
                parental_constraints: Vec<Constraint<T>>,
                constraints: Vec<Constraint<T>>,
+               bindings_at_creation: Bindings<T>,
                unification_index: UnificationIndex,
                subgoals: Vec<Self>)
                -> Self {
         Goal {
+            bindings_at_creation: bindings_at_creation,
             constraints: constraints,
             pattern: pattern,
             parental_constraints: parental_constraints,
@@ -131,6 +134,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
         Goal::new(pattern,
                   Vec::new(),
                   Vec::new(),
+                  Bindings::new(),
                   UnificationIndex::Init,
                   Vec::new())
     }
@@ -205,12 +209,15 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
     }
 
     pub fn create_subgoals(r_pattern: &U, rule: &A, parent_constraints: &Vec<&Constraint<T>>) -> Option<Vec<Self>> {
+        println!("############## creating subgoals");
         rule.r_apply(r_pattern, &Bindings::new()).and_then(|(subgoal_patterns, bindings)| {
+            println!("?????????????? bindings: {}", bindings);
             Some(subgoal_patterns.into_iter()
                 .map(|pattern| {
                     Goal::new(pattern.apply_bindings(&bindings).unwrap(),
                               parent_constraints.into_iter().map(|c| (*c).clone()).collect(),
                               Vec::new(),
+                              bindings.clone(),
                               UnificationIndex::default(),
                               Vec::new())
                 })
@@ -259,10 +266,12 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
 
         let constraint_v: Vec<String> = self.constraints.iter().map(|c| format!("{}{}", concat_tabs(ntabs + 1), c)).collect();
         let constraint_s = constraint_v.join("\n");
-        format!("{}{} @ {}\n{}parental constraints:\n{}\n{}constraints:\n{}\n{}",
+        format!("{}{} @ {}\n\t{}bindings at creation: {}\n\t{}parental constraints:\n{}\n\t{}constraints:\n{}\n{}",
                 tabs,
                 self.pattern,
                 self.unification_index,
+                tabs,
+                format!("{}", self.bindings_at_creation),
                 tabs,
                 parental_constraint_s,
                 tabs,
@@ -275,6 +284,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
             let mut clone = Goal::new(pattern,
                                       self.parental_constraints.clone(),
                                       self.constraints.clone(),
+                                      self.bindings_at_creation.clone(),
                                       self.unification_index.clone(),
                                       Vec::with_capacity(self.subgoals.len()));
             for subgoal in self.subgoals.iter() {
@@ -350,7 +360,6 @@ impl<'a, T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Iterator for Planner<'a,
 
             if let Some(goal) = self.goal.increment(&self.data, &self.rules, i, self.config.max_depth) {
                 self.goal = goal;
-                println!("\n\n--------------\n\n");
                 if let Some(bindings) = self.goal.satisifed(&self.data, &self.rules, &self.bindings) {
                     return Some((self.goal.clone(), bindings));
                 }

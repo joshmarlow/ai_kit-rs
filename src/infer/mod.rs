@@ -45,11 +45,7 @@ impl<T: BindingsValue + ToSexp, U: Unify<T> + ToSexp> ToSexp for Rule<T, U> {
                                                 .collect(),
                                         })
                                     }
-                                    _ => {
-                                        Err(FromSexpError {
-                                            message: "Expected (atom list), but received (list atom)".to_string(),
-                                        })
-                                    }
+                                    _ => Err(FromSexpError { message: "Expected (atom list), but received (list atom)".to_string() }),
                                 })
     }
 }
@@ -99,8 +95,7 @@ impl<T: BindingsValue + ToSexp, U: Unify<T> + ToSexp> Apply<T, U> for Rule<T, U>
 
         let rhs = self.rhs.rename_variables(&renamed_variable);
         let lhs: Vec<U> = self.lhs.iter().map(|lhs| lhs.rename_variables(&renamed_variable)).collect();
-        let constraints: Vec<Constraint<T>> =
-            self.constraints.iter().map(|constraint| constraint.rename_variables(&renamed_variable)).collect();
+        let constraints: Vec<Constraint<T>> = self.constraints.iter().map(|constraint| constraint.rename_variables(&renamed_variable)).collect();
 
         Rule {
             constraints: constraints,
