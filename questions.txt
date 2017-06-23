@@ -5,3 +5,9 @@ Questions:
     It appears that bindings linking goals and subgoals are not being ran.
     Why are `bindings_at_creation` time not being set?
     How to incorporate `bindings_at_creation_time`
+
+Idea:
+    Test create_subgoals to verify that bindings and constraints
+        are created appropriately linking goal and subgoals
+    Test satisfaction on shallower goal hierarchy
+        Such as where the root is (current-state 2 ?t)
