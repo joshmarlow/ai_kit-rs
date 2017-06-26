@@ -52,6 +52,62 @@ mod fplan_tests {
     }
 
     #[cfg(test)]
+    mod create_subgoals_tests {
+        use super::*;
+
+        #[test]
+        fn test_create_subgoals() {
+            let rules = setup_rules();
+            let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
+
+            let goal_pattern = Datum::from_sexp_str("((current-state 2) ((time ?t)))").expect("Goal pattern datum");
+            let expected_bindings: Bindings<Datum> = vec![("?s2".to_string(), Datum::Float(2.0)),
+                                                          ("?diff1".to_string(), Datum::Float(1.0)),
+                                                          ("?diff2".to_string(), Datum::Float(2.0)),
+                                                          ("?s1".to_string(), Datum::Float(0.0))]
+                .into_iter()
+                .collect();
+            let expected_bindings = expected_bindings.set_binding(&"?t".to_string(), Datum::Variable("?t2".to_string()));
+
+            let expected_subgoals = vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1)))").expect("SubGoal 1 datum"),
+                                                   Vec::new(),
+                                                   vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
+                                                        Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
+                                                        Constraint::from_sexp_str(r#"(constraint-sum (?s1 ?diff2 ?s2))"#).expect("Constraint"),
+                                                        Constraint::from_sexp_str(r#"(constraint-sum (?t1 ?diff1 ?t2))"#).expect("Constraint")],
+                                                   expected_bindings.clone(),
+                                                   UnificationIndex::Init,
+                                                   Vec::new()),
+                                         Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1)))").expect("SubGoal 1 datum"),
+                                                   Vec::new(),
+                                                   vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
+                                                        Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
+                                                        Constraint::from_sexp_str(r#"(constraint-sum (?s1 ?diff2 ?s2))"#).expect("Constraint"),
+                                                        Constraint::from_sexp_str(r#"(constraint-sum (?t1 ?diff1 ?t2))"#).expect("Constraint")],
+                                                   expected_bindings,
+                                                   UnificationIndex::Init,
+                                                   Vec::new())];
+            let actual_subgoals = Goal::create_subgoals(&goal_pattern, rule_refs[0], &Vec::new());
+            println!("\n");
+            println!("Expected sbugoals:");
+            for sg in expected_subgoals.iter() {
+                println!("\t{}", sg);
+            }
+            println!("Actual sbugoals:");
+            for sg in actual_subgoals.as_ref().unwrap().iter() {
+                println!("\t{}", sg);
+            }
+            println!("\n");
+            assert_eq!(actual_subgoals.as_ref().unwrap()[0].bindings_at_creation,
+                       expected_subgoals[0].bindings_at_creation,
+                       "First subgoal not as expected");
+            assert_eq!(actual_subgoals.as_ref().unwrap()[1],
+                       expected_subgoals[1],
+                       "Second subgoal not as expected");
+        }
+    }
+
+    #[cfg(test)]
     mod first_subgoal_to_increment_tests {
         use super::*;
 

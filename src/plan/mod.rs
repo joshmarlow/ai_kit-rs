@@ -161,7 +161,6 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
                 UnificationIndex::Datum(_idx) => return Some(goal),
                 UnificationIndex::Actor(idx) => {
                     let rule = rules[idx].snowflake(format!("{}", snowflake_prefix_id));
-                    goal.constraints = rule.constraints().into_iter().map(|c| c.clone()).collect();
 
                     if let Some(subgoals) = Self::create_subgoals(&self.pattern, &rule, &goal.constraints()) {
                         goal.subgoals = subgoals;
@@ -215,8 +214,8 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
             Some(subgoal_patterns.into_iter()
                 .map(|pattern| {
                     Goal::new(pattern.apply_bindings(&bindings).unwrap(),
-                              parent_constraints.into_iter().map(|c| (*c).clone()).collect(),
-                              Vec::new(),
+                              parent_constraints.iter().map(|c| (*c).clone()).collect(),
+                              rule.constraints().iter().map(|c| (*c).clone()).collect(),
                               bindings.clone(),
                               UnificationIndex::default(),
                               Vec::new())
@@ -271,7 +270,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
                 self.pattern,
                 self.unification_index,
                 tabs,
-                format!("{}", self.bindings_at_creation),
+                self.bindings_at_creation,
                 tabs,
                 parental_constraint_s,
                 tabs,

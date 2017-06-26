@@ -2,9 +2,9 @@ Run `cargo test fplan_tests::plan_iterator_tests::test_plan_iterator`
 
 Questions:
     Why is `create_subgoals` only running once?
-    It appears that bindings linking goals and subgoals are not being ran.
-    Why are `bindings_at_creation` time not being set?
-    How to incorporate `bindings_at_creation_time`
+    It appears that bindings linking goals and subgoals are not being created.
+    Why are `bindings_at_creation` not being set?
+    How to incorporate `bindings_at_creation`
 
 Idea:
     Test create_subgoals to verify that bindings and constraints
