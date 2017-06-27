@@ -141,6 +141,25 @@ impl<T: BindingsValue> Bindings<T> {
         }
     }
 
+    pub fn merge(&self, other: &Self) -> Self {
+        let mut bindings = self.clone();
+
+        // Merge in equivalences
+        for (ref key, ref equivalences) in other.equivalences.iter() {
+            for equivalent_key in equivalences.iter() {
+                bindings.ensure_equivalence_exists_mut(key);
+                bindings.add_equivalence(key, equivalent_key);
+            }
+        }
+
+        // Merge in values
+        for (key, value) in other.data.iter() {
+            bindings.set_binding_mut(&key, value.clone())
+        }
+
+        bindings
+    }
+
     pub fn equivalences_string(&self) -> String {
         let equivalent_v: Vec<String> = self.equivalences.iter().map(|(key, value)| format!("{} => {:?}", key, value)).collect();
         equivalent_v.join(",")

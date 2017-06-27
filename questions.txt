@@ -1,11 +1,8 @@
-Run `cargo test fplan_tests::plan_iterator_tests::test_plan_iterator`
+Run `cargo test fplan_tests::plan_iterator_tests::test_plan_iterator` to view the final plan
 
 Questions:
-    Why is `create_subgoals` only running once?
-        @ A complete plan is not being generated!  The root goal only has one layer of subgoals
-            Why?
-                @ satisfied is returning Some value for incomplete goal trees!
-                    MOTHERFUCKER!
+    Why is a shallow plan is not being properly satisfied?
+        @ the bindings_at_creation are not being incorporated
 
 Idea:
     Test satisfaction on shallower goal hierarchy
