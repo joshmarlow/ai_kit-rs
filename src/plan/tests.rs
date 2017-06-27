@@ -665,7 +665,61 @@ mod fplan_tests {
         }
 
         #[test]
-        fn test_goal_satisfied_returns_true_for_satisfied_nested_plan() {
+        fn test_goal_satisfied_returns_true_for_shallowly_satisfied_nested_plan() {
+            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
+            let data_refs: Vec<&Datum> = data.iter().collect();
+            let rules = setup_rules();
+            let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
+
+            let initial_bindings = Bindings::new().set_binding(&"?t".to_string(), Datum::Variable("?t1::1".to_string()));
+
+            let goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
+                Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1)))").expect("SubGoal 1 datum"),
+                          Vec::new(),
+                          vec![Constraint::from_sexp_str("(constraint-set (?diff1::1 1))").expect("Constraint"),
+                               Constraint::from_sexp_str("(constraint-set (?diff2::1 2))").expect("Constraint"),
+                               Constraint::from_sexp_str("(constraint-sum (?s1::1 ?diff2::1 ?s2::1))").expect("Constraint"),
+                               Constraint::from_sexp_str("(constraint-sum (?t1::1 ?diff1::1 ?t2::1))").expect("Constraint")],
+                          initial_bindings.clone(),
+                          UnificationIndex::Actor(0),
+                          vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1::1)))").expect("SubGoal 1 datum"),
+                                         vec![Constraint::from_sexp_str(r#"(constraint-set (?diff1::1 1))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-set (?diff2::1 2))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-sum (?s1::1 ?diff2::1 ?s2::1))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-sum (?t1::1 ?diff1::1 ?t2::1))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-set (?diff1::2 1))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-set (?diff2::2 2))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-sum (?s1::2 ?diff2::2 ?s2::2))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-sum (?t1::2 ?diff1::2 ?t2::2))"#).expect("Constraint")],
+                                         Vec::new(),
+                                         initial_bindings.clone(),
+                                         UnificationIndex::Datum(0),
+                                         Vec::new()),
+                               Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::1)))").expect("SubGoal 1 datum"),
+                                         vec![Constraint::from_sexp_str(r#"(constraint-set (?diff1::1 1))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-set (?diff2::1 2))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-sum (?s1::1 ?diff2::1 ?s2::1))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-sum (?t1::1 ?diff1::1 ?t2::1))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-set (?diff1::4 1))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-set (?diff2::4 2))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-sum (?s1::4 ?diff2::4 ?s2::4))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-sum (?t1::4 ?diff1::4 ?t2::4))"#).expect("Constraint")],
+                                         Vec::new(),
+                                         initial_bindings.clone(),
+                                         UnificationIndex::Actor(1),
+                                         Vec::new())]);
+            let expected_final_bindings = initial_bindings.clone();
+            let result = goal.satisified(&data_refs, &rule_refs, &Bindings::new());
+
+            println!("\n");
+            println!("Expected bindings:      {}\n", expected_final_bindings);
+            println!("Actual bindings:        {}\n", result.as_ref().unwrap());
+            println!("Actual tree:\n{}", goal);
+            assert_eq!(result, Some(expected_final_bindings));
+        }
+
+        #[test]
+        fn test_goal_satisfied_returns_true_for_satisfied_deeply_nested_plan() {
             let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
             let data_refs: Vec<&Datum> = data.iter().collect();
             let rules = setup_rules();

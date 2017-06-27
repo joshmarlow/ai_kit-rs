@@ -194,10 +194,11 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
 
     /// Determine if the plan is valid
     pub fn satisified(&self, data: &Vec<&U>, rules: &Vec<&A>, bindings: &Bindings<T>) -> Option<Bindings<T>> {
+        let bindings = bindings.merge(&self.bindings_at_creation);
         match self.unification_index {
             UnificationIndex::Datum(datum_idx) => {
                 self.pattern
-                    .unify(data[datum_idx], bindings)
+                    .unify(data[datum_idx], &bindings)
                     .and_then(|bindings| Constraint::solve_many(self.constraints(), &bindings).ok())
             }
             UnificationIndex::Actor(_actor_idx) => {
