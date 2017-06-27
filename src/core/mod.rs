@@ -140,6 +140,11 @@ impl<T: BindingsValue> Bindings<T> {
             None => Some(self.set_binding(variable, value.clone())),
         }
     }
+
+    pub fn equivalences_string(&self) -> String {
+        let equivalent_v: Vec<String> = self.equivalences.iter().map(|(key, value)| format!("{} => {:?}", key, value)).collect();
+        equivalent_v.join(",")
+    }
 }
 
 impl<T: BindingsValue> FromIterator<(String, T)> for Bindings<T> {
@@ -165,9 +170,13 @@ impl<T: BindingsValue> Extend<(String, T)> for Bindings<T> {
 impl<T: BindingsValue> Display for Bindings<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         try!(write!(f, "("));
-        for (key, val) in self.data.iter() {
+        let mut sorted_keys: Vec<String> = self.data.keys().cloned().collect();
+        sorted_keys.sort();
+        for key in sorted_keys.into_iter() {
+            let ref val = self.data[&key];
             try!(write!(f, "{} => {}, ", key, val));
         }
+        try!(write!(f, "Equivalences: {}", self.equivalences_string()));
         write!(f, ")")
     }
 }

@@ -2,12 +2,11 @@ Run `cargo test fplan_tests::plan_iterator_tests::test_plan_iterator`
 
 Questions:
     Why is `create_subgoals` only running once?
-    It appears that bindings linking goals and subgoals are not being created.
-    Why are `bindings_at_creation` not being set?
-    How to incorporate `bindings_at_creation`
+        @ A complete plan is not being generated!  The root goal only has one layer of subgoals
+            Why?
+                @ satisfied is returning Some value for incomplete goal trees!
+                    MOTHERFUCKER!
 
 Idea:
-    Test create_subgoals to verify that bindings and constraints
-        are created appropriately linking goal and subgoals
     Test satisfaction on shallower goal hierarchy
         Such as where the root is (current-state 2 ?t)

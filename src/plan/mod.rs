@@ -193,24 +193,31 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
     }
 
     /// Determine if the plan is valid
-    pub fn satisifed(&self, data: &Vec<&U>, rules: &Vec<&A>, bindings: &Bindings<T>) -> Option<Bindings<T>> {
-        self.fold_while_some(bindings.clone(),
-                             &|bindings, node| match node.unification_index {
-                                 UnificationIndex::Datum(datum_idx) => {
-                                     node.pattern
-                                         .unify(data[datum_idx], bindings)
-                                         .and_then(|bindings| Constraint::solve_many(self.constraints(), &bindings).ok())
-                                 }
-                                 UnificationIndex::Actor(_actor_idx) => Constraint::solve_many(self.constraints(), &bindings).ok(),
-                                 UnificationIndex::Init => self.pattern.unify(&U::nil(), &bindings),
-                                 UnificationIndex::Exhausted => None,
-                             })
+    pub fn satisified(&self, data: &Vec<&U>, rules: &Vec<&A>, bindings: &Bindings<T>) -> Option<Bindings<T>> {
+        match self.unification_index {
+            UnificationIndex::Datum(datum_idx) => {
+                self.pattern
+                    .unify(data[datum_idx], bindings)
+                    .and_then(|bindings| Constraint::solve_many(self.constraints(), &bindings).ok())
+            }
+            UnificationIndex::Actor(_actor_idx) => {
+                Constraint::solve_many(self.constraints(), &bindings).ok().and_then(|bindings| {
+                    self.subgoals
+                        .iter()
+                        .fold_while(Some(bindings),
+                                    |bindings, subgoal| match subgoal.satisified(data, rules, bindings.as_ref().unwrap()) {
+                                        Some(subgoal_bindings) => Continue(Some(subgoal_bindings.clone())),
+                                        None => Done(None),
+                                    })
+                })
+            }
+            UnificationIndex::Init => self.pattern.unify(&U::nil(), &bindings),
+            UnificationIndex::Exhausted => None,
+        }
     }
 
     pub fn create_subgoals(r_pattern: &U, rule: &A, parent_constraints: &Vec<&Constraint<T>>) -> Option<Vec<Self>> {
-        println!("############## creating subgoals");
         rule.r_apply(r_pattern, &Bindings::new()).and_then(|(subgoal_patterns, bindings)| {
-            println!("?????????????? bindings: {}", bindings);
             Some(subgoal_patterns.into_iter()
                 .map(|pattern| {
                     Goal::new(pattern.apply_bindings(&bindings).unwrap(),
@@ -359,7 +366,7 @@ impl<'a, T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Iterator for Planner<'a,
 
             if let Some(goal) = self.goal.increment(&self.data, &self.rules, i, self.config.max_depth) {
                 self.goal = goal;
-                if let Some(bindings) = self.goal.satisifed(&self.data, &self.rules, &self.bindings) {
+                if let Some(bindings) = self.goal.satisified(&self.data, &self.rules, &self.bindings) {
                     return Some((self.goal.clone(), bindings));
                 }
             } else {
