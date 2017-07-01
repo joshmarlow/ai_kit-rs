@@ -63,6 +63,55 @@ mod fplan_tests {
     }
 
     #[cfg(test)]
+    mod misc_tests {
+        use super::*;
+
+        #[test]
+        fn test_find_reused_datum_returns_reused_datum() {
+            let goal: Goal<Datum, Datum, Rule<Datum, Datum>> = Goal::new(Datum::Nil,
+                                                                         Vec::new(),
+                                                                         Vec::new(),
+                                                                         Bindings::new(),
+                                                                         UnificationIndex::Actor(0),
+                                                                         vec![Goal::new(Datum::Nil,
+                                                                                        Vec::new(),
+                                                                                        Vec::new(),
+                                                                                        Bindings::new(),
+                                                                                        UnificationIndex::Datum(0),
+                                                                                        Vec::new()),
+                                                                              Goal::new(Datum::Nil,
+                                                                                        Vec::new(),
+                                                                                        Vec::new(),
+                                                                                        Bindings::new(),
+                                                                                        UnificationIndex::Datum(0),
+                                                                                        Vec::new())]);
+            assert_eq!(goal.find_reused_datum(&mut HashSet::new()), Some(0));
+        }
+
+        #[test]
+        fn test_find_reused_datum_returns_nothing_when_no_reuse() {
+            let goal: Goal<Datum, Datum, Rule<Datum, Datum>> = Goal::new(Datum::Nil,
+                                                                         Vec::new(),
+                                                                         Vec::new(),
+                                                                         Bindings::new(),
+                                                                         UnificationIndex::Actor(0),
+                                                                         vec![Goal::new(Datum::Nil,
+                                                                                        Vec::new(),
+                                                                                        Vec::new(),
+                                                                                        Bindings::new(),
+                                                                                        UnificationIndex::Datum(0),
+                                                                                        vec![]),
+                                                                              Goal::new(Datum::Nil,
+                                                                                        Vec::new(),
+                                                                                        Vec::new(),
+                                                                                        Bindings::new(),
+                                                                                        UnificationIndex::Datum(1),
+                                                                                        Vec::new())]);
+            assert_eq!(goal.find_reused_datum(&mut HashSet::new()), None);
+        }
+    }
+
+    #[cfg(test)]
     mod create_subgoals_tests {
         use super::*;
 
@@ -694,6 +743,60 @@ mod fplan_tests {
             assert_eq!(result.is_some(), true);
             let (final_goal, _bindings) = result.unwrap();
             assert_goal_spines_match(&final_goal, &expected_final_goal);
+        }
+
+        #[test]
+        fn test_plan_for_nlp() {
+            // the dog chased a cat
+
+            // (det a)
+            // (det the)
+            // (verb chased)
+            // (noun dog)
+            // (noun cat)
+
+            // (np det noun)
+            // (vp verb np)
+
+            // (sen np vp)
+            let rules: Vec<Rule<Datum, Datum>> = vec![Rule::from_sexp_str("(defrule ((a) (det) ()))").unwrap(),
+                                                      Rule::from_sexp_str("(defrule ((the) (det) ()))").unwrap(),
+                                                      Rule::from_sexp_str("(defrule ((chased) (verb) ()))").unwrap(),
+                                                      Rule::from_sexp_str("(defrule ((dog) (noun) ()))").unwrap(),
+                                                      Rule::from_sexp_str("(defrule ((cat) (noun) ()))").unwrap(),
+                                                      Rule::from_sexp_str("(defrule (((det) (noun)) (np) ()))").unwrap(),
+                                                      Rule::from_sexp_str("(defrule (((verb) (np)) (vp) ()))").unwrap(),
+                                                      Rule::from_sexp_str("(defrule (((np) (vp)) (sen) ()))").unwrap()];
+
+            let data: Vec<Datum> = vec![Datum::from_sexp_str("a").unwrap(),
+                                        Datum::from_sexp_str("the").unwrap(),
+                                        Datum::from_sexp_str("dog").unwrap(),
+                                        Datum::from_sexp_str("cat").unwrap(),
+                                        Datum::from_sexp_str("chased").unwrap()];
+
+            let initial_goal = Goal::with_pattern(Datum::from_sexp_str("(sen)").unwrap());
+            let mut planner = Planner::new(&initial_goal,
+                                           &Bindings::new(),
+                                           &PlanningConfig {
+                                               max_depth: 5,
+                                               reuse_data: true,
+                                           },
+                                           data.iter().collect(),
+                                           rules.iter().collect(),
+                                           50);
+
+            println!("\n");
+            let result = planner.next();
+            assert_eq!(result.is_some(), true);
+            let (final_goal, bindings) = result.unwrap();
+
+            let expected_leaves: Vec<Datum> = vec!["a".to_string(), "dog".to_string(), "chased".to_string(), "the".to_string(), "cat".to_string()]
+                .into_iter()
+                .map(|s| Datum::String(s))
+                .collect();
+            println!("Expected leaves: {:?}", expected_leaves);
+            println!("Actual leaves: {:?}", final_goal.gather_leaves(&bindings));
+            assert_eq!(final_goal.gather_leaves(&bindings), expected_leaves);
         }
     }
 }

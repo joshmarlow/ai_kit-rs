@@ -3,6 +3,7 @@ use core::{Apply, Bindings, BindingsValue, Unify};
 use itertools::Itertools;
 use itertools::FoldWhile::{Continue, Done};
 use std;
+use std::collections::HashSet;
 use std::marker::PhantomData;
 
 #[cfg(test)]
@@ -216,7 +217,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
         let mut subgoals = self.subgoals.clone();
         let subgoal_count = subgoals.len();
         let is_last_subgoal = |idx| idx + 1 == subgoal_count;
-        for _i in 0..10 {
+        loop {
             let unification_indices = subgoals.iter().map(|sg| sg.unification_index.clone()).collect();
             let subgoal_idx_to_increment = first_subgoal_to_increment(&unification_indices);
             match subgoal_idx_to_increment {
@@ -236,7 +237,6 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
                 }
             }
         }
-        None
     }
 
     pub fn pprint(&self, ntabs: usize, only_render_spine: bool) -> String {
@@ -293,6 +293,44 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
             Some(clone)
         })
     }
+
+    /// Traverse the tree and determine if any datum is being used more than once
+    pub fn find_reused_datum(&self, used_data: &mut HashSet<usize>) -> Option<usize> {
+        match self.unification_index {
+            UnificationIndex::Datum(ref datum_idx) => {
+                if used_data.contains(datum_idx) {
+                    return Some(datum_idx.clone());
+                } else {
+                    used_data.insert(datum_idx.clone());
+                    return None;
+                }
+            }
+            UnificationIndex::Actor(_actor_idx) => {
+                for subgoal in self.subgoals.iter() {
+                    if let Some(idx) = subgoal.find_reused_datum(used_data) {
+                        return Some(idx);
+                    }
+                }
+                None
+            }
+            _ => None,
+        }
+    }
+
+    /// Traverse the goal tree using a depth-first search and gather the leaves of the plan
+    pub fn gather_leaves(&self, bindings: &Bindings<T>) -> Vec<U> {
+        let mut leaves = Vec::new();
+
+        if self.subgoals.is_empty() {
+            leaves.push(self.pattern.apply_bindings(&bindings).expect("Bindings should be applicable"));
+        } else {
+            for sg in self.subgoals.iter() {
+                leaves.extend(sg.gather_leaves(bindings).into_iter());
+            }
+        }
+
+        leaves
+    }
 }
 
 impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> std::fmt::Display for Goal<T, U, A> {
@@ -314,6 +352,12 @@ impl Default for PlanningConfig {
             reuse_data: true,
         }
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum InvalidPlan {
+    BindingsConflict,
+    ReusedData { idx: usize },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -345,6 +389,18 @@ impl<'a, T: BindingsValue, U: 'a + Unify<T>, A: 'a + Apply<T, U>> Planner<'a, T,
             rules: rules,
         }
     }
+
+    pub fn validate(&self, goal: &Goal<T, U, A>, config: &PlanningConfig) -> Result<Bindings<T>, InvalidPlan> {
+        if !config.reuse_data {
+            if let Some(idx) = goal.find_reused_datum(&mut HashSet::new()) {
+                return Err(InvalidPlan::ReusedData { idx: idx });
+            }
+        }
+        match goal.satisified(&self.data, &self.rules, &self.bindings) {
+            Some(bindings) => Ok(bindings),
+            None => Err(InvalidPlan::BindingsConflict),
+        }
+    }
 }
 
 impl<'a, T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Iterator for Planner<'a, T, U, A> {
@@ -355,9 +411,11 @@ impl<'a, T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Iterator for Planner<'a,
             self.total_increments += 1;
 
             if let Some(goal) = self.goal.increment(&self.data, &self.rules, i, self.config.max_depth) {
+                println!("Goal tree {}\n{}", self.total_increments, goal);
                 self.goal = goal;
-                if let Some(bindings) = self.goal.satisified(&self.data, &self.rules, &self.bindings) {
-                    return Some((self.goal.clone(), bindings));
+                match self.validate(&self.goal, &self.config) {
+                    Ok(bindings) => return Some((self.goal.clone(), bindings)),
+                    Err(_) => continue,
                 }
             } else {
                 break;
