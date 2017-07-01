@@ -1,7 +1,7 @@
 Run `cargo test fplan_tests::plan_iterator_tests::test_plan_iterator` to view the final plan
 
 Questions:
-    Why is a shallow plan is not being properly satisfied?
+    Why is a shallow plan not being properly satisfied?
         @ the bindings_at_creation are not being incorporated
 
 Idea:

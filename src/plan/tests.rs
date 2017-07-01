@@ -665,16 +665,16 @@ mod fplan_tests {
         }
 
         #[test]
-        fn test_goal_satisfied_returns_true_for_shallowly_satisfied_nested_plan() {
+        fn test_goal_satisfied_returns_true_for_shallowly_nested_satisfied_plan() {
             let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
             let data_refs: Vec<&Datum> = data.iter().collect();
             let rules = setup_rules();
             let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
 
-            let initial_bindings = Bindings::new().set_binding(&"?t".to_string(), Datum::Variable("?t1::1".to_string()));
+            let initial_bindings = Bindings::new();
 
             let goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
-                Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1)))").expect("SubGoal 1 datum"),
+                Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t2::1)))").expect("SubGoal 1 datum"),
                           Vec::new(),
                           vec![Constraint::from_sexp_str("(constraint-set (?diff1::1 1))").expect("Constraint"),
                                Constraint::from_sexp_str("(constraint-set (?diff2::1 2))").expect("Constraint"),
@@ -708,14 +708,16 @@ mod fplan_tests {
                                          initial_bindings.clone(),
                                          UnificationIndex::Actor(1),
                                          Vec::new())]);
-            let expected_final_bindings = initial_bindings.clone();
             let result = goal.satisified(&data_refs, &rule_refs, &Bindings::new());
+            assert_eq!(result.is_some(),
+                       true,
+                       "satisfied should have returned bindings");
 
-            println!("\n");
-            println!("Expected bindings:      {}\n", expected_final_bindings);
-            println!("Actual bindings:        {}\n", result.as_ref().unwrap());
-            println!("Actual tree:\n{}", goal);
-            assert_eq!(result, Some(expected_final_bindings));
+            let bindings = result.unwrap();
+            assert_eq!(bindings.get_binding(&"?t1::1".to_string()),
+                       Some(Datum::Float(0.0)));
+            assert_eq!(bindings.get_binding(&"?t2::1".to_string()),
+                       Some(Datum::Float(1.0)));
         }
 
         #[test]
