@@ -7,48 +7,59 @@ mod fplan_tests {
     use infer::Rule;
     use super::*;
 
-    #[cfg(test)]
-    mod misc_tests {
-        use super::*;
-
-        #[test]
-        fn test_fold_can_count() {
-            /// Test the fold_while_some functionality by visiting and counting every node
-            let goal: Goal<Datum, Datum, Rule<Datum, Datum>> = Goal::new(Datum::Int(0),
-                                                                         Vec::new(),
-                                                                         Vec::new(),
-                                                                         Bindings::new(),
-                                                                         UnificationIndex::Actor(0),
-                                                                         vec![Goal::new(Datum::Int(1),
-                                                                                        Vec::new(),
-                                                                                        Vec::new(),
-                                                                                        Bindings::new(),
-                                                                                        UnificationIndex::Actor(0),
-                                                                                        vec![Goal::new(Datum::Int(2),
-                                                                                                       Vec::new(),
-                                                                                                       Vec::new(),
-                                                                                                       Bindings::new(),
-                                                                                                       UnificationIndex::Datum(0),
-                                                                                                       Vec::new()),
-                                                                                             Goal::new(Datum::Int(3),
-                                                                                                       Vec::new(),
-                                                                                                       Vec::new(),
-                                                                                                       Bindings::new(),
-                                                                                                       UnificationIndex::Actor(1),
-                                                                                                       Vec::new())]),
-                                                                              Goal::new(Datum::Int(4),
-                                                                                        Vec::new(),
-                                                                                        Vec::new(),
-                                                                                        Bindings::new(),
-                                                                                        UnificationIndex::Actor(1),
-                                                                                        Vec::new())]);
-            assert_eq!(goal.fold_while_some(0,
-                                            &|state, _node| {
-                                                println!("Visiting node: {}", _node.pattern);
-                                                Some(*state + 1)
-                                            }),
-                       Some(5))
+    /// Recursively compares the 'spines' of two goal trees
+    /// where the 'spine' is the goal pattern and the unification indexes, as well as the number of subgoals
+    fn assert_goal_spines_match(actual_goal: &Goal<Datum, Datum, Rule<Datum, Datum>>, expected_goal: &Goal<Datum, Datum, Rule<Datum, Datum>>) {
+        if actual_goal.pattern != expected_goal.pattern {
+            panic!("Patterns don't match - expected:\n\t{}\nbut found:\n\t{}\n",
+                   actual_goal.pattern,
+                   expected_goal.pattern);
         }
+        if actual_goal.unification_index != expected_goal.unification_index {
+            panic!("Unification indexes don't match - expected:\n\t{}\nbut found:\n\t{}\n",
+                   actual_goal.unification_index,
+                   expected_goal.unification_index);
+        }
+        assert_eq!(actual_goal.subgoals.len(),
+                   expected_goal.subgoals.len(),
+                   "Differing numbers of subgoals");
+
+        for (expected_subgoal, actual_subgoal) in expected_goal.subgoals.iter().zip(actual_goal.subgoals.iter()) {
+            assert_goal_spines_match(actual_subgoal, expected_subgoal)
+        }
+    }
+
+    pub fn setup_rules() -> Vec<Rule<Datum, Datum>> {
+        let physics_rule = Rule::from_sexp_str(r#"(defrule
+            ((((current-state ?s1) ((time ?t1)))
+              ((action 2) ((time ?t1))))
+             ((current-state ?s2) ((time ?t2)))
+             ((constraint-set (?diff1 1))
+              (constraint-set (?diff2 2))
+              (constraint-sum (?s1 ?diff2 ?s2))
+              (constraint-sum (?t1 ?diff1 ?t2)))))"#)
+            .expect("physics rule 1");
+        let physics_rule_2 = Rule::from_sexp_str(r#"(defrule
+         ((((current-state ?s1) ((time ?t1)))
+            ((action 1) ((time ?t1))))
+           ((current-state ?s2) ((time ?t2)))
+           ((constraint-set (?diff 1))
+            (constraint-sum (?t1 ?diff ?t2))
+            (constraint-sum (?s1 ?diff ?s2)))))"#)
+            .expect("physics rule 2");
+        let interaction_model_add_2 = Rule::from_sexp_str(r#"(defrule
+            (()
+            ((action 2) ((time ?t)))
+            ()))"#)
+            .expect("interaction model 2");
+
+        let interaction_model_add_1 = Rule::from_sexp_str(r#"(defrule
+            (()
+            ((action 1) ((time ?t)))
+            ()))"#)
+            .expect("interaction model 1");
+
+        vec![physics_rule, interaction_model_add_2, physics_rule_2, interaction_model_add_1]
     }
 
     #[cfg(test)]
@@ -168,29 +179,20 @@ mod fplan_tests {
                                          Bindings::new(),
                                          UnificationIndex::Actor(1),
                                          Vec::new())]);
-            let expected_increment_subgoals: Vec<Goal<Datum, Datum, Rule<Datum, Datum>>> =
+            let expected_incremented_subgoals: Vec<Goal<Datum, Datum, Rule<Datum, Datum>>> =
                 vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
                                Vec::new(),
-                               vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                               Vec::new(),
                                Bindings::new(),
                                UnificationIndex::Actor(0),
                                vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1::0)))").expect("SubGoal 1 datum"),
-                                              vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                                              Vec::new(),
                                               Vec::new(),
                                               Bindings::new(),
                                               UnificationIndex::Init,
                                               Vec::new()),
                                     Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
-                                              vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                                              Vec::new(),
                                               Vec::new(),
                                               Bindings::new(),
                                               UnificationIndex::Init,
@@ -201,53 +203,14 @@ mod fplan_tests {
                                Bindings::new(),
                                UnificationIndex::Datum(0),
                                Vec::new())];
-            println!("\n");
             let incremented_subgoals = initial_goal.increment_subgoals(&data_refs, &rule_refs, 0, 3);
-            println!("Expected subgoals:\n");
-            for sg in expected_increment_subgoals.iter() {
-                println!("\t{}", sg);
+            assert_eq!(incremented_subgoals.is_some(), true);
+            let incremented_subgoals = incremented_subgoals.unwrap();
+
+            for (incremented_subgoal, expected_incremented_goal) in incremented_subgoals.iter().zip(expected_incremented_subgoals.iter()) {
+                assert_goal_spines_match(incremented_subgoal, expected_incremented_goal);
             }
-            println!("Actual subgoals:  \n");
-            if let Some(ref subgoals) = incremented_subgoals {
-                for sg in subgoals.iter() {
-                    println!("\t{}", sg);
-                }
-            }
-            assert_eq!(incremented_subgoals, Some(expected_increment_subgoals));
         }
-    }
-
-    pub fn setup_rules() -> Vec<Rule<Datum, Datum>> {
-        let physics_rule = Rule::from_sexp_str(r#"(defrule
-            ((((current-state ?s1) ((time ?t1)))
-              ((action 2) ((time ?t1))))
-             ((current-state ?s2) ((time ?t2)))
-             ((constraint-set (?diff1 1))
-              (constraint-set (?diff2 2))
-              (constraint-sum (?s1 ?diff2 ?s2))
-              (constraint-sum (?t1 ?diff1 ?t2)))))"#)
-            .expect("physics rule 1");
-        let physics_rule_2 = Rule::from_sexp_str(r#"(defrule
-         ((((current-state ?s1) ((time ?t1)))
-            ((action 1) ((time ?t1))))
-           ((current-state ?s2) ((time ?t2)))
-           ((constraint-set (?diff 1))
-            (constraint-sum (?t1 ?diff ?t2))
-            (constraint-sum (?s1 ?diff ?s2)))))"#)
-            .expect("physics rule 2");
-        let interaction_model_add_2 = Rule::from_sexp_str(r#"(defrule
-            (()
-            ((action 2) ((time ?t)))
-            ()))"#)
-            .expect("interaction model 2");
-
-        let interaction_model_add_1 = Rule::from_sexp_str(r#"(defrule
-            (()
-            ((action 1) ((time ?t)))
-            ()))"#)
-            .expect("interaction model 1");
-
-        vec![physics_rule, interaction_model_add_2, physics_rule_2, interaction_model_add_1]
     }
 
     #[cfg(test)]
@@ -278,26 +241,17 @@ mod fplan_tests {
                      // Second goal
                      Goal::new(goal.pattern.clone(),
                                Vec::new(),
-                               vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                               Vec::new(),
                                Bindings::new(),
                                UnificationIndex::Actor(0),
                                vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
-                                              vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                                              Vec::new(),
                                               Vec::new(),
                                               Bindings::new(),
                                               UnificationIndex::Init,
                                               Vec::new()),
                                     Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
-                                              vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                                              Vec::new(),
                                               Vec::new(),
                                               Bindings::new(),
                                               UnificationIndex::Init,
@@ -305,26 +259,17 @@ mod fplan_tests {
                      // Third goal
                      Goal::new(goal.pattern.clone(),
                                Vec::new(),
-                               vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                               Vec::new(),
                                Bindings::new(),
                                UnificationIndex::Actor(0),
                                vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
-                                              vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                                              Vec::new(),
                                               Vec::new(),
                                               Bindings::new(),
                                               UnificationIndex::Datum(0),
                                               vec![]),
                                     Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
-                                              vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                                              Vec::new(),
                                               Vec::new(),
                                               Bindings::new(),
                                               UnificationIndex::Datum(0),
@@ -332,26 +277,17 @@ mod fplan_tests {
                      // Fourth goal
                      Goal::new(goal.pattern.clone(),
                                Vec::new(),
-                               vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                               Vec::new(),
                                Bindings::new(),
                                UnificationIndex::Actor(0),
                                vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
-                                              vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                                              Vec::new(),
                                               Vec::new(),
                                               Bindings::new(),
                                               UnificationIndex::Datum(0),
                                               Vec::new()),
                                     Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
-                                              vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                                              Vec::new(),
                                               Vec::new(),
                                               Bindings::new(),
                                               UnificationIndex::Actor(1),
@@ -359,87 +295,29 @@ mod fplan_tests {
                      // Fifth goal
                      Goal::new(goal.pattern.clone(),
                                Vec::new(),
-                               vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                               Vec::new(),
                                Bindings::new(),
                                UnificationIndex::Actor(0),
                                vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
-                                              vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
-                                              vec![Constraint::from_sexp_str("(constraint-set (?diff1::3 1))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-set (?diff2::3 2))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?s1::3 ?diff2::3 ?s2::3))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?t1::3 ?diff1::3 ?t2::3))").expect("Constraint")],
+                                              Vec::new(),
+                                              Vec::new(),
                                               Bindings::new(),
                                               UnificationIndex::Actor(0),
                                               vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1::3)))")
                                                                  .expect("SubGoal 1 datum"),
-                                                             vec![Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff1::0 1))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff2::0 2))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?s1::0 \
-                                                                                             ?diff2::0 ?s2::0))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?t1::0 \
-                                                                                             ?diff1::0 ?t2::0))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff1::3 1))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff2::3 2))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?s1::3 \
-                                                                                             ?diff2::3 ?s2::3))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?t1::3 \
-                                                                                             ?diff1::3 ?t2::3))")
-                                                                      .expect("Constraint")],
+                                                             Vec::new(),
                                                              Vec::new(),
                                                              Bindings::new(),
                                                              UnificationIndex::Init,
                                                              Vec::new()),
                                                    Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::3)))").expect("SubGoal 1 datum"),
-                                                             vec![Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff1::0 1))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff2::0 2))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?s1::0 \
-                                                                                             ?diff2::0 ?s2::0))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?t1::0 \
-                                                                                             ?diff1::0 ?t2::0))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff1::3 1))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff2::3 2))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?s1::3 \
-                                                                                             ?diff2::3 ?s2::3))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?t1::3 \
-                                                                                             ?diff1::3 ?t2::3))")
-                                                                      .expect("Constraint")],
+                                                             Vec::new(),
                                                              Vec::new(),
                                                              Bindings::new(),
                                                              UnificationIndex::Init,
                                                              Vec::new())]),
                                     Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
-                                              vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                                              Vec::new(),
                                               Vec::new(),
                                               Bindings::new(),
                                               UnificationIndex::Datum(0),
@@ -447,87 +325,29 @@ mod fplan_tests {
                      // Sixth goal
                      Goal::new(goal.pattern.clone(),
                                Vec::new(),
-                               vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                    Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                               Vec::new(),
                                Bindings::new(),
                                UnificationIndex::Actor(0),
                                vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
-                                              vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
-                                              vec![Constraint::from_sexp_str("(constraint-set (?diff1::3 1))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-set (?diff2::3 2))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?s1::3 ?diff2::3 ?s2::3))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?t1::3 ?diff1::3 ?t2::3))").expect("Constraint")],
+                                              Vec::new(),
+                                              Vec::new(),
                                               Bindings::new(),
                                               UnificationIndex::Actor(0),
                                               vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1::3)))")
                                                                  .expect("SubGoal 1 datum"),
-                                                             vec![Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff1::0 1))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff2::0 2))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?s1::0 \
-                                                                                             ?diff2::0 ?s2::0))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?t1::0 \
-                                                                                             ?diff1::0 ?t2::0))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff1::3 1))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff2::3 2))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?s1::3 \
-                                                                                             ?diff2::3 ?s2::3))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?t1::3 \
-                                                                                             ?diff1::3 ?t2::3))")
-                                                                      .expect("Constraint")],
+                                                             Vec::new(),
                                                              Vec::new(),
                                                              Bindings::new(),
                                                              UnificationIndex::Init,
                                                              Vec::new()),
                                                    Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::3)))").expect("SubGoal 1 datum"),
-                                                             vec![Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff1::0 1))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff2::0 2))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?s1::0 \
-                                                                                             ?diff2::0 ?s2::0))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?t1::0 \
-                                                                                             ?diff1::0 ?t2::0))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff1::3 1))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-set \
-                                                                                             (?diff2::3 2))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?s1::3 \
-                                                                                             ?diff2::3 ?s2::3))")
-                                                                      .expect("Constraint"),
-                                                                  Constraint::from_sexp_str("(constraint-sum (?t1::3 \
-                                                                                             ?diff1::3 ?t2::3))")
-                                                                      .expect("Constraint")],
+                                                             Vec::new(),
                                                              Vec::new(),
                                                              Bindings::new(),
                                                              UnificationIndex::Init,
                                                              Vec::new())]),
                                     Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
-                                              vec![Constraint::from_sexp_str("(constraint-set (?diff1::0 1))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-set (?diff2::0 2))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?s1::0 ?diff2::0 ?s2::0))").expect("Constraint"),
-                                                   Constraint::from_sexp_str("(constraint-sum (?t1::0 ?diff1::0 ?t2::0))").expect("Constraint")],
+                                              Vec::new(),
                                               Vec::new(),
                                               Bindings::new(),
                                               UnificationIndex::Actor(1),
@@ -539,9 +359,7 @@ mod fplan_tests {
                          idx + 1,
                          expected_incremented_goal,
                          incremented_goal);
-                assert_eq!(incremented_goal,
-                           expected_incremented_goal,
-                           "Stepped goal not as expected");
+                assert_goal_spines_match(&incremented_goal, &expected_incremented_goal);
                 incremented_goal = incremented_goal.increment(&data_refs, &rule_refs, idx, 3).expect("Initial plan");
             }
         }
@@ -579,34 +397,17 @@ mod fplan_tests {
                           UnificationIndex::Actor(0),
                           vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
                                          Vec::new(),
-                                         vec![Constraint::from_sexp_str("(constraint-set (?diff1::2 1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-set (?diff2::2 2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?s1::2 ?diff2::2 ?s2::2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?t1::2 ?diff1::2 ?t2::2))").expect("Constraint")],
+                                         Vec::new(),
                                          Bindings::new(),
                                          UnificationIndex::Actor(0),
                                          vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1::2)))").expect("SubGoal 1 datum"),
-                                                        vec![Constraint::from_sexp_str("(constraint-set (?diff1::2 1))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-set (?diff2::2 2))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-sum (?s1::2 \
-                                                                                        ?diff2::2 ?s2::2))")
-                                                                 .expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-sum (?t1::2 \
-                                                                                        ?diff1::2 ?t2::2))")
-                                                                 .expect("Constraint")],
+                                                        Vec::new(),
                                                         Vec::new(),
                                                         Bindings::new(),
                                                         UnificationIndex::Init,
                                                         Vec::new()),
                                               Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::2)))").expect("SubGoal 1 datum"),
-                                                        vec![Constraint::from_sexp_str("(constraint-set (?diff1::2 1))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-set (?diff2::2 2))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-sum (?s1::2 \
-                                                                                        ?diff2::2 ?s2::2))")
-                                                                 .expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-sum (?t1::2 \
-                                                                                        ?diff1::2 ?t2::2))")
-                                                                 .expect("Constraint")],
+                                                        Vec::new(),
                                                         Vec::new(),
                                                         Bindings::new(),
                                                         UnificationIndex::Init,
@@ -617,13 +418,8 @@ mod fplan_tests {
                                          Bindings::new(),
                                          UnificationIndex::Datum(0),
                                          Vec::new())]);
-            println!("\n");
             let incremented_goal = initial_goal.increment(&data_refs, &rule_refs, 2, 3).expect("Initial plan");
-            println!("Expected: {}", expected_increment);
-            println!("Actual  : {}", incremented_goal);
-            assert_eq!(incremented_goal,
-                       expected_increment,
-                       "Stepped goal not as expected");
+            assert_goal_spines_match(&incremented_goal, &expected_increment);
         }
     }
 
@@ -665,13 +461,11 @@ mod fplan_tests {
         }
 
         #[test]
-        fn test_goal_satisfied_returns_true_for_shallowly_nested_satisfied_plan() {
+        fn test_goal_satisfied_returns_true_for_shallowly_nested_plan() {
             let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
             let data_refs: Vec<&Datum> = data.iter().collect();
             let rules = setup_rules();
             let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
-
-            let initial_bindings = Bindings::new();
 
             let goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
                 Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t2::1)))").expect("SubGoal 1 datum"),
@@ -680,7 +474,7 @@ mod fplan_tests {
                                Constraint::from_sexp_str("(constraint-set (?diff2::1 2))").expect("Constraint"),
                                Constraint::from_sexp_str("(constraint-sum (?s1::1 ?diff2::1 ?s2::1))").expect("Constraint"),
                                Constraint::from_sexp_str("(constraint-sum (?t1::1 ?diff1::1 ?t2::1))").expect("Constraint")],
-                          initial_bindings.clone(),
+                          Bindings::new(),
                           UnificationIndex::Actor(0),
                           vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1::1)))").expect("SubGoal 1 datum"),
                                          vec![Constraint::from_sexp_str(r#"(constraint-set (?diff1::1 1))"#).expect("Constraint"),
@@ -692,7 +486,7 @@ mod fplan_tests {
                                               Constraint::from_sexp_str(r#"(constraint-sum (?s1::2 ?diff2::2 ?s2::2))"#).expect("Constraint"),
                                               Constraint::from_sexp_str(r#"(constraint-sum (?t1::2 ?diff1::2 ?t2::2))"#).expect("Constraint")],
                                          Vec::new(),
-                                         initial_bindings.clone(),
+                                         Bindings::new(),
                                          UnificationIndex::Datum(0),
                                          Vec::new()),
                                Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::1)))").expect("SubGoal 1 datum"),
@@ -700,12 +494,12 @@ mod fplan_tests {
                                               Constraint::from_sexp_str(r#"(constraint-set (?diff2::1 2))"#).expect("Constraint"),
                                               Constraint::from_sexp_str(r#"(constraint-sum (?s1::1 ?diff2::1 ?s2::1))"#).expect("Constraint"),
                                               Constraint::from_sexp_str(r#"(constraint-sum (?t1::1 ?diff1::1 ?t2::1))"#).expect("Constraint"),
-                                              Constraint::from_sexp_str(r#"(constraint-set (?diff1::4 1))"#).expect("Constraint"),
-                                              Constraint::from_sexp_str(r#"(constraint-set (?diff2::4 2))"#).expect("Constraint"),
-                                              Constraint::from_sexp_str(r#"(constraint-sum (?s1::4 ?diff2::4 ?s2::4))"#).expect("Constraint"),
-                                              Constraint::from_sexp_str(r#"(constraint-sum (?t1::4 ?diff1::4 ?t2::4))"#).expect("Constraint")],
+                                              Constraint::from_sexp_str(r#"(constraint-set (?diff1::2 1))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-set (?diff2::2 2))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-sum (?s1::2 ?diff2::2 ?s2::2))"#).expect("Constraint"),
+                                              Constraint::from_sexp_str(r#"(constraint-sum (?t1::2 ?diff1::2 ?t2::2))"#).expect("Constraint")],
                                          Vec::new(),
-                                         initial_bindings.clone(),
+                                         Bindings::new(),
                                          UnificationIndex::Actor(1),
                                          Vec::new())]);
             let result = goal.satisified(&data_refs, &rule_refs, &Bindings::new());
@@ -721,7 +515,7 @@ mod fplan_tests {
         }
 
         #[test]
-        fn test_goal_satisfied_returns_true_for_satisfied_deeply_nested_plan() {
+        fn test_goal_satisfied_returns_true_for_deeply_nested_plan() {
             let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
             let data_refs: Vec<&Datum> = data.iter().collect();
             let rules = setup_rules();
@@ -730,24 +524,21 @@ mod fplan_tests {
             let goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
                 Goal::new(Datum::from_sexp_str("((current-state 4) ((time ?t)))").expect("Goal datum"),
                           Vec::new(),
-                          vec![Constraint::from_sexp_str("(constraint-set (?diff1::1 1))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-set (?diff2::1 2))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-sum (?s1::1 ?diff2::1 ?s2::1))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-sum (?t1::1 ?diff1::1 ?t2::1))").expect("Constraint")],
+                          vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
+                               Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
+                               Constraint::from_sexp_str("(constraint-sum (?s2::1 ?diff2 ?s))").expect("Constraint"),
+                               Constraint::from_sexp_str("(constraint-sum (?t2::1 ?diff1 ?t))").expect("Constraint")],
                           Bindings::new(),
                           UnificationIndex::Actor(0),
-                          vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::1)))").expect("SubGoal 1 datum"),
+                          vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t2::1)))").expect("SubGoal 1 datum"),
+                                         Vec::new(),
                                          vec![Constraint::from_sexp_str("(constraint-set (?diff1::1 1))").expect("Constraint"),
                                               Constraint::from_sexp_str("(constraint-set (?diff2::1 2))").expect("Constraint"),
                                               Constraint::from_sexp_str("(constraint-sum (?s1::1 ?diff2::1 ?s2::1))").expect("Constraint"),
                                               Constraint::from_sexp_str("(constraint-sum (?t1::1 ?diff1::1 ?t2::1))").expect("Constraint")],
-                                         vec![Constraint::from_sexp_str("(constraint-set (?diff1::4 1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-set (?diff2::4 2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?s1::4 ?diff2::4 ?s2::4))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?t1::4 ?diff1::4 ?t2::4))").expect("Constraint")],
                                          Bindings::new(),
                                          UnificationIndex::Actor(0),
-                                         vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1::4)))").expect("SubGoal 1 datum"),
+                                         vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1::1)))").expect("SubGoal 1 datum"),
                                                         vec![Constraint::from_sexp_str(r#"(constraint-set (?diff1::1 1))"#)
                                                                  .expect("Constraint"),
                                                              Constraint::from_sexp_str(r#"(constraint-set (?diff2::1 2))"#)
@@ -756,19 +547,25 @@ mod fplan_tests {
                                                                  .expect("Constraint"),
                                                              Constraint::from_sexp_str(r#"(constraint-sum (?t1::1 ?diff1::1 ?t2::1))"#)
                                                                  .expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-set (?diff1::4 1))"#)
+                                                             Constraint::from_sexp_str(r#"(constraint-set (?diff1::2 1))"#)
                                                                  .expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-set (?diff2::4 2))"#)
+                                                             Constraint::from_sexp_str(r#"(constraint-set (?diff2::2 2))"#)
                                                                  .expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-sum (?s1::4 ?diff2::4 ?s2::4))"#)
+                                                             Constraint::from_sexp_str(r#"(constraint-sum (?s1::2 ?diff2::2 ?s2::2))"#)
                                                                  .expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-sum (?t1::4 ?diff1::4 ?t2::4))"#)
+                                                             Constraint::from_sexp_str(r#"(constraint-sum (?t1::2 ?diff1::2 ?t2::2))"#)
+                                                                 .expect("Constraint"),
+                                                             Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
+                                                             Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
+                                                             Constraint::from_sexp_str("(constraint-sum (?s2::1 ?diff2 ?s))")
+                                                                 .expect("Constraint"),
+                                                             Constraint::from_sexp_str("(constraint-sum (?t2::1 ?diff1 ?t))")
                                                                  .expect("Constraint")],
                                                         Vec::new(),
                                                         Bindings::new(),
                                                         UnificationIndex::Datum(0),
                                                         Vec::new()),
-                                              Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::4)))").expect("SubGoal 1 datum"),
+                                              Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::1)))").expect("SubGoal 1 datum"),
                                                         vec![Constraint::from_sexp_str(r#"(constraint-set (?diff1::1 1))"#)
                                                                  .expect("Constraint"),
                                                              Constraint::from_sexp_str(r#"(constraint-set (?diff2::1 2))"#)
@@ -777,39 +574,45 @@ mod fplan_tests {
                                                                  .expect("Constraint"),
                                                              Constraint::from_sexp_str(r#"(constraint-sum (?t1::1 ?diff1::1 ?t2::1))"#)
                                                                  .expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-set (?diff1::4 1))"#)
+                                                             Constraint::from_sexp_str(r#"(constraint-set (?diff1::2 1))"#)
                                                                  .expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-set (?diff2::4 2))"#)
+                                                             Constraint::from_sexp_str(r#"(constraint-set (?diff2::2 2))"#)
                                                                  .expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-sum (?s1::4 ?diff2::4 ?s2::4))"#)
+                                                             Constraint::from_sexp_str(r#"(constraint-sum (?s1::2 ?diff2::2 ?s2::2))"#)
                                                                  .expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-sum (?t1::4 ?diff1::4 ?t2::4))"#)
+                                                             Constraint::from_sexp_str(r#"(constraint-sum (?t1::2 ?diff1::2 ?t2::2))"#)
+                                                                 .expect("Constraint"),
+                                                             Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
+                                                             Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
+                                                             Constraint::from_sexp_str("(constraint-sum (?s2::1 ?diff2 ?s))")
+                                                                 .expect("Constraint"),
+                                                             Constraint::from_sexp_str("(constraint-sum (?t2::1 ?diff1 ?t))")
                                                                  .expect("Constraint")],
                                                         Vec::new(),
                                                         Bindings::new(),
                                                         UnificationIndex::Actor(1),
                                                         Vec::new())]),
-                               Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::1)))").expect("SubGoal 2 datum"),
+                               Goal::new(Datum::from_sexp_str("((action 2) ((time ?t2::1)))").expect("SubGoal 2 datum"),
+                                         Vec::new(),
                                          vec![Constraint::from_sexp_str("(constraint-set (?diff1::1 1))").expect("Constraint"),
                                               Constraint::from_sexp_str("(constraint-set (?diff2::1 2))").expect("Constraint"),
                                               Constraint::from_sexp_str("(constraint-sum (?s1::1 ?diff2::1 ?s2::1))").expect("Constraint"),
                                               Constraint::from_sexp_str("(constraint-sum (?t1::1 ?diff1::1 ?t2::1))").expect("Constraint")],
-                                         Vec::new(),
                                          Bindings::new(),
                                          UnificationIndex::Actor(1),
                                          Vec::new())]);
-            let expected_bindings: Bindings<Datum> = vec![("?t".to_string(), Datum::Float(2.0)),
-                                                          ("?t1::0".to_string(), Datum::Float(1.0)),
-                                                          ("?t1::4".to_string(), Datum::Float(0.0)),
-                                                          ("?diff1::0".to_string(), Datum::Float(1.0)),
-                                                          ("?diff2::0".to_string(), Datum::Float(2.0))]
-                .into_iter()
-                .collect();
             let result = goal.satisified(&data_refs, &rule_refs, &Bindings::new());
-            println!("\n");
-            println!("Expected bindings:      {}", expected_bindings);
-            println!("Actual bindings:        {}", result.as_ref().unwrap());
-            assert_eq!(result, Some(expected_bindings));
+            assert_eq!(result.is_some(),
+                       true,
+                       "satisfied should have returned bindings");
+
+            let bindings = result.unwrap();
+            assert_eq!(bindings.get_binding(&"?t1::1".to_string()),
+                       Some(Datum::Float(0.0)));
+            assert_eq!(bindings.get_binding(&"?t2::1".to_string()),
+                       Some(Datum::Float(1.0)));
+            assert_eq!(bindings.get_binding(&"?t".to_string()),
+                       Some(Datum::Float(2.0)));
         }
 
         #[test]
@@ -880,88 +683,36 @@ mod fplan_tests {
             let expected_final_goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
                 Goal::new(Datum::from_sexp_str("((current-state 4) ((time ?t)))").expect("Goal datum"),
                           Vec::new(),
-                          vec![Constraint::from_sexp_str("(constraint-set (?diff1::1 1))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-set (?diff2::1 2))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-sum (?s1::1 ?diff2::1 ?s2::1))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-sum (?t1::1 ?diff1::1 ?t2::1))").expect("Constraint")],
+                          Vec::new(),
                           Bindings::new(),
                           UnificationIndex::Actor(0),
                           vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::1)))").expect("SubGoal 1 datum"),
-                                         vec![Constraint::from_sexp_str("(constraint-set (?diff1::1 1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-set (?diff2::1 2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?s1::1 ?diff2::1 ?s2::1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?t1::1 ?diff1::1 ?t2::1))").expect("Constraint")],
-                                         vec![Constraint::from_sexp_str("(constraint-set (?diff1::4 1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-set (?diff2::4 2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?s1::4 ?diff2::4 ?s2::4))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?t1::4 ?diff1::4 ?t2::4))").expect("Constraint")],
+                                         Vec::new(),
+                                         Vec::new(),
                                          Bindings::new(),
                                          UnificationIndex::Actor(0),
                                          vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1::4)))").expect("SubGoal 1 datum"),
-                                                        vec![Constraint::from_sexp_str("(constraint-set (?diff1::1 1))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-set (?diff2::1 2))").expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-sum (?s1::1 ?diff2::1 ?s2::1))"#)
-                                                                 .expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-sum (?t1::1 ?diff1::1 ?t2::1))"#)
-                                                                 .expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-set (?diff1::4 1))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-set (?diff2::4 2))").expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-sum (?s1::4 ?diff2::4 ?s2::4))"#)
-                                                                 .expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-sum (?t1::4 ?diff1::4 ?t2::4))"#)
-                                                                 .expect("Constraint")],
+                                                        Vec::new(),
                                                         Vec::new(),
                                                         Bindings::new(),
                                                         UnificationIndex::Datum(0),
                                                         Vec::new()),
                                               Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::4)))").expect("SubGoal 1 datum"),
-                                                        vec![Constraint::from_sexp_str("(constraint-set (?diff1::1 1))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-set (?diff2::1 2))").expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-sum (?s1::1 ?diff2::1 ?s2::1))"#)
-                                                                 .expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-sum (?t1::1 ?diff1::1 ?t2::1))"#)
-                                                                 .expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-set (?diff1::4 1))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-set (?diff2::4 2))").expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-sum (?s1::4 ?diff2::4 ?s2::4))"#)
-                                                                 .expect("Constraint"),
-                                                             Constraint::from_sexp_str(r#"(constraint-sum (?t1::4 ?diff1::4 ?t2::4))"#)
-                                                                 .expect("Constraint")],
+                                                        Vec::new(),
                                                         Vec::new(),
                                                         Bindings::new(),
                                                         UnificationIndex::Actor(1),
                                                         Vec::new())]),
                                Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::1)))").expect("SubGoal 2 datum"),
-                                         vec![Constraint::from_sexp_str("(constraint-set (?diff1::1 1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-set (?diff2::1 2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?s1::1 ?diff2::1 ?s2::1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?t1::1 ?diff1::1 ?t2::1))").expect("Constraint")],
+                                         Vec::new(),
                                          Vec::new(),
                                          Bindings::new(),
                                          UnificationIndex::Actor(1),
                                          Vec::new())]);
-            let expected_bindings: Bindings<Datum> = vec![("?t1::4".to_string(), Datum::Float(0.0)),
-                                                          ("?t2::4".to_string(), Datum::Float(1.0)),
-                                                          ("?diff1::4".to_string(), Datum::Float(1.0)),
-                                                          ("?diff2::1".to_string(), Datum::Float(2.0)),
-                                                          ("?diff2::4".to_string(), Datum::Float(2.0)),
-                                                          ("?diff1::1".to_string(), Datum::Float(1.0))]
-                .into_iter()
-                .collect();
             let result = planner.next();
-            println!("\n");
-            println!("Before application: {}\n", result.as_ref().unwrap().0);
-            println!("After application: {}",
-                     result.as_ref().unwrap().0.apply_bindings(&result.as_ref().unwrap().1).unwrap());
-            println!("\n");
-            println!("Expected bindings: {}", expected_bindings);
-            println!("\n");
-            println!("Actual bindings:   {}", result.as_ref().unwrap().1);
-            println!("\n");
             assert_eq!(result.is_some(), true);
-            assert_eq!(result.as_ref().unwrap().0, expected_final_goal);
-            assert_eq!(result.as_ref().unwrap().1, expected_bindings);
-            assert_eq!(true, false);
+            let (final_goal, _bindings) = result.unwrap();
+            assert_goal_spines_match(&final_goal, &expected_final_goal);
         }
     }
 }

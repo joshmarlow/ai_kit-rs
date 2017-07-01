@@ -1,9 +1,0 @@
-Run `cargo test fplan_tests::plan_iterator_tests::test_plan_iterator` to view the final plan
-
-Questions:
-    Why is a shallow plan not being properly satisfied?
-        @ the bindings_at_creation are not being incorporated
-
-Idea:
-    Test satisfaction on shallower goal hierarchy
-        Such as where the root is (current-state 2 ?t)

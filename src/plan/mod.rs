@@ -174,24 +174,6 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
         }
     }
 
-    pub fn fold_while_some<S: std::fmt::Debug + Sized + Clone>(&self, state: S, f: &Fn(&S, &Self) -> Option<S>) -> Option<S> {
-        match self.unification_index {
-            UnificationIndex::Datum(_datum_idx) => f(&state, &self),
-            UnificationIndex::Actor(_actor_idx) => {
-                self.subgoals
-                    .iter()
-                    .fold_while(Some(state),
-                                |state, subgoal| match subgoal.fold_while_some(state.unwrap(), &f) {
-                                    Some(new_state) => Continue(Some(new_state.clone())),
-                                    None => Done(None),
-                                })
-                    .and_then(|state| f(&state, &self))
-            }
-            UnificationIndex::Init => Some(state),
-            UnificationIndex::Exhausted => None,
-        }
-    }
-
     /// Determine if the plan is valid
     pub fn satisified(&self, data: &Vec<&U>, rules: &Vec<&A>, bindings: &Bindings<T>) -> Option<Bindings<T>> {
         let bindings = bindings.merge(&self.bindings_at_creation);
@@ -202,15 +184,13 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
                     .and_then(|bindings| Constraint::solve_many(self.constraints(), &bindings).ok())
             }
             UnificationIndex::Actor(_actor_idx) => {
-                Constraint::solve_many(self.constraints(), &bindings).ok().and_then(|bindings| {
-                    self.subgoals
-                        .iter()
-                        .fold_while(Some(bindings),
-                                    |bindings, subgoal| match subgoal.satisified(data, rules, bindings.as_ref().unwrap()) {
-                                        Some(subgoal_bindings) => Continue(Some(subgoal_bindings.clone())),
-                                        None => Done(None),
-                                    })
-                })
+                self.subgoals
+                    .iter()
+                    .fold_while(Some(bindings),
+                                |bindings, subgoal| match subgoal.satisified(data, rules, bindings.as_ref().unwrap()) {
+                                    Some(subgoal_bindings) => Continue(Some(subgoal_bindings.clone())),
+                                    None => Done(None),
+                                })
             }
             UnificationIndex::Init => self.pattern.unify(&U::nil(), &bindings),
             UnificationIndex::Exhausted => None,
@@ -259,13 +239,13 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
         None
     }
 
-    pub fn pprint(&self, ntabs: usize) -> String {
+    pub fn pprint(&self, ntabs: usize, only_render_spine: bool) -> String {
         fn concat_tabs(ntabs: usize) -> String {
             let tabv: Vec<String> = (0..ntabs).map(|_| "\t".to_string()).collect();
             tabv.join("")
         }
         let tabs = concat_tabs(ntabs);
-        let subgoal_v: Vec<String> = self.subgoals.iter().map(|sg| sg.pprint(ntabs + 1)).collect();
+        let subgoal_v: Vec<String> = self.subgoals.iter().map(|sg| sg.pprint(ntabs + 1, only_render_spine)).collect();
         let subgoal_s = subgoal_v.join("\n");
 
         let parental_constraint_v: Vec<String> = self.parental_constraints.iter().map(|c| format!("{}{}", concat_tabs(ntabs + 1), c)).collect();
@@ -273,17 +253,26 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
 
         let constraint_v: Vec<String> = self.constraints.iter().map(|c| format!("{}{}", concat_tabs(ntabs + 1), c)).collect();
         let constraint_s = constraint_v.join("\n");
-        format!("{}{} @ {}\n\t{}bindings at creation: {}\n\t{}parental constraints:\n{}\n\t{}constraints:\n{}\n{}",
-                tabs,
-                self.pattern,
-                self.unification_index,
-                tabs,
-                self.bindings_at_creation,
-                tabs,
-                parental_constraint_s,
-                tabs,
-                constraint_s,
-                subgoal_s)
+
+        if only_render_spine {
+            format!("{}{} @ {}\n{}",
+                    tabs,
+                    self.pattern,
+                    self.unification_index,
+                    subgoal_s)
+        } else {
+            format!("{}{} @ {}\n\t{}bindings at creation: {}\n\t{}parental constraints:\n{}\n\t{}constraints:\n{}\n{}",
+                    tabs,
+                    self.pattern,
+                    self.unification_index,
+                    tabs,
+                    self.bindings_at_creation,
+                    tabs,
+                    parental_constraint_s,
+                    tabs,
+                    constraint_s,
+                    subgoal_s)
+        }
     }
 
     pub fn apply_bindings(&self, bindings: &Bindings<T>) -> Option<Self> {
@@ -308,7 +297,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
 
 impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> std::fmt::Display for Goal<T, U, A> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        write!(f, "Goal tree:\n{}", self.pprint(1))
+        write!(f, "Goal tree:\n{}", self.pprint(1, true))
     }
 }
 
