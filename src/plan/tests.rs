@@ -322,64 +322,6 @@ mod fplan_tests {
             let incremented_goal = goal.increment(&data_refs, &rule_refs, 2, 3).expect("Initial plan");
             assert_goal_spines_match(&incremented_goal, &expected_incremented_goal);
         }
-
-        #[test]
-        fn test_initial_increment_weird_case() {
-            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
-            let rules = setup_rules();
-            let data_refs: Vec<&Datum> = data.iter().collect();
-            let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
-
-            let goal_pattern = Datum::from_sexp_str("((current-state 4) ((time ?t)))").expect("Goal datum");
-            let initial_goal = Goal::new(goal_pattern.clone(),
-                                         Vec::new(),
-                                         Vec::new(),
-                                         Bindings::new(),
-                                         UnificationIndex::Actor(0),
-                                         vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
-                                                        Vec::new(),
-                                                        Vec::new(),
-                                                        Bindings::new(),
-                                                        UnificationIndex::Datum(0),
-                                                        vec![]),
-                                              Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
-                                                        Vec::new(),
-                                                        Vec::new(),
-                                                        Bindings::new(),
-                                                        UnificationIndex::Actor(1),
-                                                        Vec::new())]);
-            let expected_increment =
-                Goal::new(goal_pattern.clone(),
-                          Vec::new(),
-                          Vec::new(),
-                          Bindings::new(),
-                          UnificationIndex::Actor(0),
-                          vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::0)))").expect("SubGoal 1 datum"),
-                                         Vec::new(),
-                                         Vec::new(),
-                                         Bindings::new(),
-                                         UnificationIndex::Actor(0),
-                                         vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1::2)))").expect("SubGoal 1 datum"),
-                                                        Vec::new(),
-                                                        Vec::new(),
-                                                        Bindings::new(),
-                                                        UnificationIndex::Init,
-                                                        Vec::new()),
-                                              Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::2)))").expect("SubGoal 1 datum"),
-                                                        Vec::new(),
-                                                        Vec::new(),
-                                                        Bindings::new(),
-                                                        UnificationIndex::Init,
-                                                        Vec::new())]),
-                               Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::0)))").expect("SubGoal 2 datum"),
-                                         Vec::new(),
-                                         Vec::new(),
-                                         Bindings::new(),
-                                         UnificationIndex::Datum(0),
-                                         Vec::new())]);
-            let incremented_goal = initial_goal.increment(&data_refs, &rule_refs, 2, 3).expect("Initial plan");
-            assert_goal_spines_match(&incremented_goal, &expected_increment);
-        }
     }
 
     #[cfg(test)]
