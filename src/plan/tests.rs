@@ -117,6 +117,8 @@ mod fplan_tests {
 
         #[test]
         fn test_create_subgoals() {
+            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
+            let data_refs: Vec<&Datum> = data.iter().collect();
             let rules = setup_rules();
             let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
 
@@ -147,7 +149,13 @@ mod fplan_tests {
                                                    expected_bindings,
                                                    UnificationIndex::Init,
                                                    Vec::new())];
-            let actual_subgoals = Goal::create_subgoals(&goal_pattern, rule_refs[0], &Vec::new());
+            let actual_subgoals = Goal::create_subgoals(&goal_pattern,
+                                                        rule_refs[0],
+                                                        &Vec::new(),
+                                                        &data_refs,
+                                                        &rule_refs,
+                                                        0,
+                                                        5);
             assert_eq!(actual_subgoals.as_ref().unwrap()[0],
                        expected_subgoals[0],
                        "First subgoal not as expected");
@@ -711,29 +719,29 @@ mod fplan_tests {
                                            100);
 
             let expected_final_goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
-                Goal::new(Datum::from_sexp_str("((current-state 4) ((time ?t)))").expect("Goal datum"),
+                Goal::new(Datum::from_sexp_str("((current-state 4) ((time 2)))").expect("Goal datum"),
                           Vec::new(),
                           Vec::new(),
                           Bindings::new(),
                           UnificationIndex::Actor(0),
-                          vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::1)))").expect("SubGoal 1 datum"),
+                          vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time 1)))").expect("SubGoal 1 datum"),
                                          Vec::new(),
                                          Vec::new(),
                                          Bindings::new(),
                                          UnificationIndex::Actor(0),
-                                         vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1::4)))").expect("SubGoal 1 datum"),
+                                         vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("SubGoal 1 datum"),
                                                         Vec::new(),
                                                         Vec::new(),
                                                         Bindings::new(),
                                                         UnificationIndex::Datum(0),
                                                         Vec::new()),
-                                              Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::4)))").expect("SubGoal 1 datum"),
+                                              Goal::new(Datum::from_sexp_str("((action 2) ((time 0)))").expect("SubGoal 1 datum"),
                                                         Vec::new(),
                                                         Vec::new(),
                                                         Bindings::new(),
                                                         UnificationIndex::Actor(1),
                                                         Vec::new())]),
-                               Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::1)))").expect("SubGoal 2 datum"),
+                               Goal::new(Datum::from_sexp_str("((action 2) ((time 1)))").expect("SubGoal 2 datum"),
                                          Vec::new(),
                                          Vec::new(),
                                          Bindings::new(),
@@ -741,8 +749,9 @@ mod fplan_tests {
                                          Vec::new())]);
             let result = planner.next();
             assert_eq!(result.is_some(), true);
-            let (final_goal, _bindings) = result.unwrap();
-            assert_goal_spines_match(&final_goal, &expected_final_goal);
+            let (final_goal, bindings) = result.unwrap();
+            assert_goal_spines_match(&final_goal.apply_bindings(&bindings).unwrap(),
+                                     &expected_final_goal);
         }
 
         #[test]
@@ -779,13 +788,12 @@ mod fplan_tests {
                                            &Bindings::new(),
                                            &PlanningConfig {
                                                max_depth: 5,
-                                               reuse_data: true,
+                                               reuse_data: false,
                                            },
                                            data.iter().collect(),
                                            rules.iter().collect(),
                                            50);
 
-            println!("\n");
             let result = planner.next();
             assert_eq!(result.is_some(), true);
             let (final_goal, bindings) = result.unwrap();
@@ -794,8 +802,6 @@ mod fplan_tests {
                 .into_iter()
                 .map(|s| Datum::String(s))
                 .collect();
-            println!("Expected leaves: {:?}", expected_leaves);
-            println!("Actual leaves: {:?}", final_goal.gather_leaves(&bindings));
             assert_eq!(final_goal.gather_leaves(&bindings), expected_leaves);
         }
     }

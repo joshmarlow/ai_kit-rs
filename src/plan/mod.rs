@@ -158,12 +158,24 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
         // If subgoals cannot be incremented, increment this goal
         loop {
             goal.unification_index = increment_unification_index(&goal.unification_index, data.len(), rules.len());
+
+            // Attempt to increment this goal
             match goal.unification_index {
-                UnificationIndex::Datum(_idx) => return Some(goal),
+                UnificationIndex::Datum(_idx) => {
+                    if goal.satisified(data, rules, &goal.bindings_at_creation).is_some() {
+                        return Some(goal);
+                    }
+                }
                 UnificationIndex::Actor(idx) => {
                     let rule = rules[idx].snowflake(format!("{}", snowflake_prefix_id));
 
-                    if let Some(subgoals) = Self::create_subgoals(&self.pattern, &rule, &goal.constraints()) {
+                    if let Some(subgoals) = Self::create_subgoals(&self.pattern,
+                                                                  &rule,
+                                                                  &goal.constraints(),
+                                                                  data,
+                                                                  rules,
+                                                                  snowflake_prefix_id,
+                                                                  max_depth) {
                         goal.subgoals = subgoals;
                         return Some(goal);
                     }
@@ -198,9 +210,16 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
         }
     }
 
-    pub fn create_subgoals(r_pattern: &U, rule: &A, parent_constraints: &Vec<&Constraint<T>>) -> Option<Vec<Self>> {
+    pub fn create_subgoals(r_pattern: &U,
+                           rule: &A,
+                           parent_constraints: &Vec<&Constraint<T>>,
+                           data: &Vec<&U>,
+                           rules: &Vec<&A>,
+                           snowflake_prefix_id: usize,
+                           max_depth: usize)
+                           -> Option<Vec<Self>> {
         rule.r_apply(r_pattern, &Bindings::new()).and_then(|(subgoal_patterns, bindings)| {
-            Some(subgoal_patterns.into_iter()
+            let subgoals: Vec<Option<Self>> = subgoal_patterns.into_iter()
                 .map(|pattern| {
                     Goal::new(pattern.apply_bindings(&bindings).unwrap(),
                               parent_constraints.iter().map(|c| (*c).clone()).collect(),
@@ -208,8 +227,15 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
                               bindings.clone(),
                               UnificationIndex::default(),
                               Vec::new())
+                        .increment(data, rules, snowflake_prefix_id + 1, max_depth - 1)
                 })
-                .collect())
+                .collect();
+
+            if subgoals.iter().any(|x| x.is_none()) {
+                None
+            } else {
+                Some(subgoals.into_iter().map(|sg| sg.unwrap()).collect())
+            }
         })
     }
 
@@ -411,7 +437,6 @@ impl<'a, T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Iterator for Planner<'a,
             self.total_increments += 1;
 
             if let Some(goal) = self.goal.increment(&self.data, &self.rules, i, self.config.max_depth) {
-                println!("Goal tree {}\n{}", self.total_increments, goal);
                 self.goal = goal;
                 match self.validate(&self.goal, &self.config) {
                     Ok(bindings) => return Some((self.goal.clone(), bindings)),
