@@ -65,14 +65,6 @@ pub enum Constraint<T: BindingsValue> {
         third: String,
         _marker: PhantomData<T>,
     },
-    /// (constraint-less-than (?x ?y))
-    /// ?x < ?y
-    #[serde(rename="<")]
-    LessThan {
-        left: String,
-        right: String,
-        _marker: PhantomData<T>,
-    },
     /// (constraint-greater-than (?x ?y))
     /// ?x > ?y
     #[serde(rename=">")]
@@ -134,13 +126,6 @@ impl<T: BindingsValue> Constraint<T> {
                             return SolveResult::Conflict;
                         }
                     }
-                    _ => return SolveResult::Partial(bindings.clone()),
-                }
-            }
-            Constraint::LessThan { ref left, ref right, .. } => {
-                match (bindings.get_binding(left), bindings.get_binding(right)) {
-                    (Some(ref left_value), Some(ref right_value)) if left_value < right_value => return SolveResult::Success(bindings.clone()),
-                    (Some(_), Some(_)) => return SolveResult::Conflict,
                     _ => return SolveResult::Partial(bindings.clone()),
                 }
             }
@@ -217,13 +202,6 @@ impl<T: BindingsValue> Constraint<T> {
                     _marker: PhantomData,
                 }
             }
-            Constraint::LessThan { ref left, ref right, .. } => {
-                Constraint::LessThan {
-                    left: lookup(left),
-                    right: lookup(right),
-                    _marker: PhantomData,
-                }
-            }
             Constraint::GreaterThan { ref left, ref right, .. } => {
                 Constraint::GreaterThan {
                     left: lookup(left),
@@ -246,7 +224,6 @@ impl<T: BindingsValue> Constraint<T> {
             Constraint::Set { ref variable, .. } => vec![variable.clone()],
             Constraint::Sum { ref first, ref second, ref third, .. } => vec![first.clone(), second.clone(), third.clone()],
             Constraint::Mul { ref first, ref second, ref third, .. } => vec![first.clone(), second.clone(), third.clone()],
-            Constraint::LessThan { ref left, ref right, .. } => vec![left.clone(), right.clone()],
             Constraint::GreaterThan { ref left, ref right, .. } => vec![left.clone(), right.clone()],
             Constraint::NotEqual { ref left, ref right, .. } => vec![left.clone(), right.clone()],
         }
@@ -286,12 +263,6 @@ impl<T: BindingsValue> PartialOrd for Constraint<T> {
                     ordering => ordering,
                 }
             }
-            (&Constraint::LessThan { ref left, ref right, .. }, &Constraint::LessThan { left: ref left2, right: ref right2, .. }) => {
-                match left.partial_cmp(left2) {
-                    Some(std::cmp::Ordering::Equal) => right.partial_cmp(right2),
-                    ordering => ordering,
-                }
-            }
             (&Constraint::GreaterThan { ref left, ref right, .. }, &Constraint::GreaterThan { left: ref left2, right: ref right2, .. }) => {
                 match left.partial_cmp(left2) {
                     Some(std::cmp::Ordering::Equal) => right.partial_cmp(right2),
@@ -327,10 +298,6 @@ impl<T: BindingsValue> ToSexp for Constraint<T> {
                                       Sexp::List(vec![Sexp::Atom(Atom::S(first.clone())),
                                                       Sexp::Atom(Atom::S(second.clone())),
                                                       Sexp::Atom(Atom::S(third.clone()))]))
-            }
-            Constraint::LessThan { ref left, ref right, .. } => {
-                utils::to_sexp_helper("constraint-less-than",
-                                      Sexp::List(vec![Sexp::Atom(Atom::S(left.clone())), Sexp::Atom(Atom::S(right.clone()))]))
             }
             Constraint::GreaterThan { ref left, ref right, .. } => {
                 utils::to_sexp_helper("constraint-greater-than",
@@ -388,21 +355,6 @@ impl<T: BindingsValue> ToSexp for Constraint<T> {
                                                     first: first.clone(),
                                                     second: second.clone(),
                                                     third: third.clone(),
-                                                    _marker: PhantomData,
-                                                })
-                                            }
-                                            _ => Err(FromSexpError { message: "Expected (atom list), but received (list atom)".to_string() }),
-                                        })
-            })
-            .or_else(|_err| {
-                utils::from_sexp_helper("constraint-less-than",
-                                        s_exp,
-                                        2,
-                                        &|args| match (&args[0], &args[1]) {
-                                            (&Sexp::Atom(Atom::S(ref left_var)), &Sexp::Atom(Atom::S(ref right_var))) => {
-                                                Ok(Constraint::LessThan {
-                                                    left: left_var.clone(),
-                                                    right: right_var.clone(),
                                                     _marker: PhantomData,
                                                 })
                                             }
