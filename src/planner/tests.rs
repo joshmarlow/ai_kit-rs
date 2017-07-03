@@ -1,7 +1,7 @@
-use plan::*;
+use planner::*;
 
 #[cfg(test)]
-mod fplan_tests {
+mod planner_tests {
     use core::ToSexp;
     use datum::Datum;
     use infer::Rule;
@@ -587,6 +587,9 @@ mod fplan_tests {
 
         #[test]
         fn test_plan_with_goal_constraint() {
+            /*
+             * Verify that we backtrack if a constraint is violated.
+             */
             let rules = setup_rules();
             let constraints: Vec<super::Constraint<Datum>> = vec!["(constraint-set (?min_time 2))", "(constraint-greater-than (?t2 ?min_time))"]
                 .into_iter()

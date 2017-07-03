@@ -11,8 +11,6 @@ pub mod constraints;
 pub mod core;
 pub mod datum;
 pub mod infer;
-pub mod plan;
 pub mod pedigree;
 pub mod planner;
-pub mod simplan;
 pub mod utils;

@@ -54,8 +54,7 @@ fn test_backward_iterator() {
                                source_id: a_id0.clone(),
                                args: Vec::new(),
                            }))],
-                     vec![&vec![a_id2.clone(), d_id2.clone()].into_iter().collect(),
-                          &vec![d_id3.clone()].into_iter().collect()]
+                     vec![&vec![a_id2.clone(), d_id2.clone()].into_iter().collect(), &vec![d_id3.clone()].into_iter().collect()]
                          .into_iter()
                          .collect())));
     assert_eq!(iter.next(),

@@ -79,8 +79,7 @@ impl<'a> Iterator for InferenceGraphBackwardIterator<'a> {
 
         current_generation.and_then(|generation_idx| {
             self.inf_graph.entries_by_generation.get(generation_idx).and_then(|generation| {
-                Some((construct_id_origin_tuples_for_generation(generation),
-                      self.inf_graph.subsequent_inferences((generation_idx + 1))))
+                Some((construct_id_origin_tuples_for_generation(generation), self.inf_graph.subsequent_inferences((generation_idx + 1))))
             })
         })
     }
@@ -353,8 +352,7 @@ impl Pedigree {
                                                 |builder, current_id| match self.get_ancestor(current_id).cloned() {
                                                     None => builder,
                                                     Some(ref origin) => {
-                                                        let builder =
-                                                            builder.update_pedigree(current_id.clone(), origin.clone());
+                                                        let builder = builder.update_pedigree(current_id.clone(), origin.clone());
                                                         let builder = if origin.args.is_empty() {
                                                             builder.update_leaves(current_id.clone())
                                                         } else {

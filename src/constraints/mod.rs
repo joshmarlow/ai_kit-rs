@@ -96,8 +96,7 @@ impl<T: BindingsValue> Eq for Constraint<T> {}
 impl<T: BindingsValue> Constraint<T> {
     /// Try to solve this constraint using the information in the bindings
     pub fn solve(&self, bindings: &Bindings<T>) -> SolveResult<T> {
-        let to_float =
-            |value: &T| -> f64 { value.to_float().expect(&format!("Expected to convert value {:?} to float", value).as_str()) };
+        let to_float = |value: &T| -> f64 { value.to_float().expect(&format!("Expected to convert value {:?} to float", value).as_str()) };
         let (key, value) = match *self {
             Constraint::Set { ref variable, ref constant, .. } => {
                 match bindings.get_binding(variable) {
@@ -140,27 +139,21 @@ impl<T: BindingsValue> Constraint<T> {
             }
             Constraint::LessThan { ref left, ref right, .. } => {
                 match (bindings.get_binding(left), bindings.get_binding(right)) {
-                    (Some(ref left_value), Some(ref right_value)) if left_value < right_value => {
-                        return SolveResult::Success(bindings.clone())
-                    }
+                    (Some(ref left_value), Some(ref right_value)) if left_value < right_value => return SolveResult::Success(bindings.clone()),
                     (Some(_), Some(_)) => return SolveResult::Conflict,
                     _ => return SolveResult::Partial(bindings.clone()),
                 }
             }
             Constraint::GreaterThan { ref left, ref right, .. } => {
                 match (bindings.get_binding(left), bindings.get_binding(right)) {
-                    (Some(ref left_value), Some(ref right_value)) if left_value > right_value => {
-                        return SolveResult::Success(bindings.clone())
-                    }
+                    (Some(ref left_value), Some(ref right_value)) if left_value > right_value => return SolveResult::Success(bindings.clone()),
                     (Some(_), Some(_)) => return SolveResult::Conflict,
                     _ => return SolveResult::Partial(bindings.clone()),
                 }
             }
             Constraint::NotEqual { ref left, ref right, .. } => {
                 match (bindings.get_binding(left), bindings.get_binding(right)) {
-                    (Some(ref left_value), Some(ref right_value)) if left_value != right_value => {
-                        return SolveResult::Success(bindings.clone())
-                    }
+                    (Some(ref left_value), Some(ref right_value)) if left_value != right_value => return SolveResult::Success(bindings.clone()),
                     (Some(_), Some(_)) => return SolveResult::Conflict,
                     _ => return SolveResult::Partial(bindings.clone()),
                 }
@@ -263,8 +256,7 @@ impl<T: BindingsValue> Constraint<T> {
 impl<T: BindingsValue> PartialOrd for Constraint<T> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         match (self, other) {
-            (&Constraint::Set { ref variable, ref constant, .. },
-             &Constraint::Set { variable: ref variable2, constant: ref constant2, .. }) => {
+            (&Constraint::Set { ref variable, ref constant, .. }, &Constraint::Set { variable: ref variable2, constant: ref constant2, .. }) => {
                 match variable.partial_cmp(variable2) {
                     Some(std::cmp::Ordering::Equal) => constant.partial_cmp(constant2),
                     ordering => ordering,
@@ -294,22 +286,19 @@ impl<T: BindingsValue> PartialOrd for Constraint<T> {
                     ordering => ordering,
                 }
             }
-            (&Constraint::LessThan { ref left, ref right, .. },
-             &Constraint::LessThan { left: ref left2, right: ref right2, .. }) => {
+            (&Constraint::LessThan { ref left, ref right, .. }, &Constraint::LessThan { left: ref left2, right: ref right2, .. }) => {
                 match left.partial_cmp(left2) {
                     Some(std::cmp::Ordering::Equal) => right.partial_cmp(right2),
                     ordering => ordering,
                 }
             }
-            (&Constraint::GreaterThan { ref left, ref right, .. },
-             &Constraint::GreaterThan { left: ref left2, right: ref right2, .. }) => {
+            (&Constraint::GreaterThan { ref left, ref right, .. }, &Constraint::GreaterThan { left: ref left2, right: ref right2, .. }) => {
                 match left.partial_cmp(left2) {
                     Some(std::cmp::Ordering::Equal) => right.partial_cmp(right2),
                     ordering => ordering,
                 }
             }
-            (&Constraint::NotEqual { ref left, ref right, .. },
-             &Constraint::NotEqual { left: ref left2, right: ref right2, .. }) => {
+            (&Constraint::NotEqual { ref left, ref right, .. }, &Constraint::NotEqual { left: ref left2, right: ref right2, .. }) => {
                 match left.partial_cmp(left2) {
                     Some(std::cmp::Ordering::Equal) => right.partial_cmp(right2),
                     ordering => ordering,
@@ -325,8 +314,7 @@ impl<T: BindingsValue> ToSexp for Constraint<T> {
         match *self {
             Constraint::Set { ref variable, ref constant, .. } => {
                 utils::to_sexp_helper("constraint-set",
-                                      Sexp::List(vec![Sexp::Atom(Atom::S(variable.clone())),
-                                                      Sexp::Atom(Atom::F(constant.clone()))]))
+                                      Sexp::List(vec![Sexp::Atom(Atom::S(variable.clone())), Sexp::Atom(Atom::F(constant.clone()))]))
             }
             Constraint::Sum { ref first, ref second, ref third, .. } => {
                 utils::to_sexp_helper("constraint-sum",
@@ -372,20 +360,14 @@ impl<T: BindingsValue> ToSexp for Constraint<T> {
                                             constant: constant.clone() as f64,
                                         })
                                     }
-                                    _ => {
-                                        Err(FromSexpError {
-                                            message: "Expected (atom list), but received (list atom)".to_string(),
-                                        })
-                                    }
+                                    _ => Err(FromSexpError { message: "Expected (atom list), but received (list atom)".to_string() }),
                                 })
             .or_else(|_err| {
                 utils::from_sexp_helper("constraint-sum",
                                         s_exp,
                                         3,
                                         &|args| match (&args[0], &args[1], &args[2]) {
-                                            (&Sexp::Atom(Atom::S(ref first)),
-                                             &Sexp::Atom(Atom::S(ref second)),
-                                             &Sexp::Atom(Atom::S(ref third))) => {
+                                            (&Sexp::Atom(Atom::S(ref first)), &Sexp::Atom(Atom::S(ref second)), &Sexp::Atom(Atom::S(ref third))) => {
                                                 Ok(Constraint::Sum {
                                                     first: first.clone(),
                                                     second: second.clone(),
@@ -393,11 +375,7 @@ impl<T: BindingsValue> ToSexp for Constraint<T> {
                                                     _marker: PhantomData,
                                                 })
                                             }
-                                            _ => {
-                                                Err(FromSexpError {
-                                                    message: "Expected (atom list), but received (list atom)".to_string(),
-                                                })
-                                            }
+                                            _ => Err(FromSexpError { message: "Expected (atom list), but received (list atom)".to_string() }),
                                         })
             })
             .or_else(|_err| {
@@ -405,9 +383,7 @@ impl<T: BindingsValue> ToSexp for Constraint<T> {
                                         s_exp,
                                         3,
                                         &|args| match (&args[0], &args[1], &args[2]) {
-                                            (&Sexp::Atom(Atom::S(ref first)),
-                                             &Sexp::Atom(Atom::S(ref second)),
-                                             &Sexp::Atom(Atom::S(ref third))) => {
+                                            (&Sexp::Atom(Atom::S(ref first)), &Sexp::Atom(Atom::S(ref second)), &Sexp::Atom(Atom::S(ref third))) => {
                                                 Ok(Constraint::Mul {
                                                     first: first.clone(),
                                                     second: second.clone(),
@@ -415,11 +391,7 @@ impl<T: BindingsValue> ToSexp for Constraint<T> {
                                                     _marker: PhantomData,
                                                 })
                                             }
-                                            _ => {
-                                                Err(FromSexpError {
-                                                    message: "Expected (atom list), but received (list atom)".to_string(),
-                                                })
-                                            }
+                                            _ => Err(FromSexpError { message: "Expected (atom list), but received (list atom)".to_string() }),
                                         })
             })
             .or_else(|_err| {
@@ -434,11 +406,7 @@ impl<T: BindingsValue> ToSexp for Constraint<T> {
                                                     _marker: PhantomData,
                                                 })
                                             }
-                                            _ => {
-                                                Err(FromSexpError {
-                                                    message: "Expected (atom list), but received (list atom)".to_string(),
-                                                })
-                                            }
+                                            _ => Err(FromSexpError { message: "Expected (atom list), but received (list atom)".to_string() }),
                                         })
             })
             .or_else(|_err| {
@@ -453,11 +421,7 @@ impl<T: BindingsValue> ToSexp for Constraint<T> {
                                                     _marker: PhantomData,
                                                 })
                                             }
-                                            _ => {
-                                                Err(FromSexpError {
-                                                    message: "Expected (atom list), but received (list atom)".to_string(),
-                                                })
-                                            }
+                                            _ => Err(FromSexpError { message: "Expected (atom list), but received (list atom)".to_string() }),
                                         })
             })
             .or_else(|_err| {
@@ -472,11 +436,7 @@ impl<T: BindingsValue> ToSexp for Constraint<T> {
                                                     _marker: PhantomData,
                                                 })
                                             }
-                                            _ => {
-                                                Err(FromSexpError {
-                                                    message: "Expected (atom list), but received (list atom)".to_string(),
-                                                })
-                                            }
+                                            _ => Err(FromSexpError { message: "Expected (atom list), but received (list atom)".to_string() }),
                                         })
             })
             .or_else(|_err| {

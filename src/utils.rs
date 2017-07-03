@@ -27,10 +27,7 @@ pub fn fold_while_some<A, E>(init_acc: A, iter: &mut Iterator<Item = E>, f: &Fn(
     })
 }
 
-pub fn fold_while_ok<A, I, E: std::fmt::Debug>(init_acc: A,
-                                               iter: &mut Iterator<Item = I>,
-                                               f: &Fn(A, I) -> Result<A, E>)
-                                               -> Result<A, E> {
+pub fn fold_while_ok<A, I, E: std::fmt::Debug>(init_acc: A, iter: &mut Iterator<Item = I>, f: &Fn(A, I) -> Result<A, E>) -> Result<A, E> {
     iter.fold_while(Ok(init_acc), |acc, x| match f(acc.unwrap(), x) {
         Ok(value) => Continue(Ok(value)),
         Err(err) => Done(Err(err)),
@@ -54,8 +51,9 @@ pub fn from_sexp_helper<A>(expected_head: &str,
     match *s_exp {
         Sexp::List(ref elements) if elements.len() == 2 => {
             match (&elements[0], &elements[1]) {
-                (&Sexp::Atom(Atom::S(ref head)), &Sexp::List(ref args)) if head.as_str() == expected_head &&
-                                                                           args.len() == expected_arg_count => f(args),
+                (&Sexp::Atom(Atom::S(ref head)), &Sexp::List(ref args)) if head.as_str() == expected_head && args.len() == expected_arg_count => {
+                    f(args)
+                }
                 (&Sexp::Atom(ref head), &Sexp::List(ref args)) => {
                     err(format!("from_sexp_helper:: Expected head: '{}' with {} args, found '{}' with args {} ({:?})",
                                 expected_head,

@@ -226,10 +226,7 @@ impl core::BindingsValue for Datum {
 impl core::Unify<Datum> for Datum {
     fn unify(&self, other: &Datum, bindings: &core::Bindings<Self>) -> Option<core::Bindings<Self>> {
 
-        fn unify_args(args: &Vec<Datum>,
-                      args2: &Vec<Datum>,
-                      bindings: &core::Bindings<Datum>)
-                      -> Option<core::Bindings<Datum>> {
+        fn unify_args(args: &Vec<Datum>, args2: &Vec<Datum>, bindings: &core::Bindings<Datum>) -> Option<core::Bindings<Datum>> {
             utils::fold_while_some(bindings.clone(),
                                    &mut args.iter().zip(args2.iter()),
                                    &|bindings: core::Bindings<Datum>, (ref a, ref b): (&Datum, &Datum)| a.unify(&b, &bindings))
@@ -294,9 +291,7 @@ impl core::Unify<Datum> for Datum {
     fn get_variable(&self, q: &String) -> Option<&Self> {
         match *self {
             Datum::Variable(ref v) if v == q => Some(self),
-            Datum::Compound { ref head, ref args } => {
-                head.get_variable(q).or_else(|| args.iter().filter_map(|arg| arg.get_variable(q)).next())
-            }
+            Datum::Compound { ref head, ref args } => head.get_variable(q).or_else(|| args.iter().filter_map(|arg| arg.get_variable(q)).next()),
             _ => None,
         }
     }
@@ -418,8 +413,7 @@ compound:
     fn test_unify_passes_when_match_with_new_variable_in_self() {
         let d = Datum::from_sexp_str("(isa socrates ?x)").unwrap();
         let d2 = Datum::from_sexp_str("(isa socrates man)").unwrap();
-        let expected_bindings: Bindings<Datum> =
-            vec![("?x".to_string(), Datum::from_sexp_str("man").unwrap())].into_iter().collect();
+        let expected_bindings: Bindings<Datum> = vec![("?x".to_string(), Datum::from_sexp_str("man").unwrap())].into_iter().collect();
         let actual_bindings = d.unify(&d2, &Bindings::new());
         assert_some_value!(actual_bindings, expected_bindings);
     }
@@ -428,8 +422,7 @@ compound:
     fn test_unify_passes_when_match_with_new_variable_in_other() {
         let d = Datum::from_sexp_str("(isa socrates man)").unwrap();
         let d2 = Datum::from_sexp_str("(isa socrates ?x)").unwrap();
-        let expected_bindings: Bindings<Datum> =
-            vec![("?x".to_string(), Datum::from_sexp_str("man").unwrap())].into_iter().collect();
+        let expected_bindings: Bindings<Datum> = vec![("?x".to_string(), Datum::from_sexp_str("man").unwrap())].into_iter().collect();
         let actual_bindings = d.unify(&d2, &Bindings::new());
         assert_some_value!(actual_bindings, expected_bindings);
     }
