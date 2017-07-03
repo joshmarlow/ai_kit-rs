@@ -584,5 +584,71 @@ mod fplan_tests {
                 .collect();
             assert_eq!(final_goal.gather_leaves(&bindings), expected_leaves);
         }
+
+        #[test]
+        fn test_plan_with_goal_constraint() {
+            let rules = setup_rules();
+            let constraints: Vec<super::Constraint<Datum>> = vec!["(constraint-set (?min_time 2))", "(constraint-greater-than (?t2 ?min_time))"]
+                .into_iter()
+                .map(|s| super::Constraint::from_sexp_str(s).expect("Expected constraint to be parsed"))
+                .collect();
+
+            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 1)))").expect("d1")];
+            let initial_goal = Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t2)))").expect("d2"),
+                                         Vec::new(),
+                                         constraints,
+                                         Bindings::new(),
+                                         UnificationIndex::Init,
+                                         Vec::new());
+            let expected_final_goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
+                Goal::new(Datum::from_sexp_str("((current-state 2) ((time 3)))").expect("Goal datum"),
+                          Vec::new(),
+                          Vec::new(),
+                          Bindings::new(),
+                          UnificationIndex::Actor(2),
+                          vec![Goal::new(Datum::from_sexp_str("((current-state 1) ((time 2)))").expect("SubGoal 1 datum"),
+                                         Vec::new(),
+                                         Vec::new(),
+                                         Bindings::new(),
+                                         UnificationIndex::Actor(2),
+                                         vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time 1)))").expect("SubGoal 1 datum"),
+                                                        Vec::new(),
+                                                        Vec::new(),
+                                                        Bindings::new(),
+                                                        UnificationIndex::Datum(0),
+                                                        Vec::new()),
+                                              Goal::new(Datum::from_sexp_str("((action 1) ((time 1)))").expect("SubGoal 1 datum"),
+                                                        Vec::new(),
+                                                        Vec::new(),
+                                                        Bindings::new(),
+                                                        UnificationIndex::Actor(3),
+                                                        Vec::new())]),
+                               Goal::new(Datum::from_sexp_str("((action 1) ((time 2)))").expect("SubGoal 2 datum"),
+                                         Vec::new(),
+                                         Vec::new(),
+                                         Bindings::new(),
+                                         UnificationIndex::Actor(3),
+                                         Vec::new())]);
+            let mut planner = Planner::new(&initial_goal,
+                                           &Bindings::new(),
+                                           &PlanningConfig {
+                                               max_depth: 5,
+                                               reuse_data: true,
+                                           },
+                                           data.iter().collect(),
+                                           rules.iter().collect(),
+                                           50);
+
+            let result = planner.next();
+            assert_eq!(result.is_some(), true);
+
+            let (final_goal, bindings) = result.unwrap();
+
+            assert_eq!(bindings.get_binding(&"?t2".to_string()),
+                       Some(Datum::from_float(3.0)));
+
+            assert_goal_spines_match(&final_goal.apply_bindings(&bindings).unwrap(),
+                                     &expected_final_goal);
+        }
     }
 }
