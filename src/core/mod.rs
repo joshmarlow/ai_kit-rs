@@ -1,48 +1,16 @@
-use std;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::{Debug, Display, Formatter, Result};
 use std::iter::{Extend, FromIterator};
 
 use serde::{Deserialize, Serialize};
 
-use sexp;
-
 use constraints;
 
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug, Clone)]
-pub struct FromSexpError {
-    pub message: String,
-}
-
-pub trait ToSexp: Sized {
-    fn to_sexp(&self) -> sexp::Sexp;
-    fn from_sexp(&sexp::Sexp) -> std::result::Result<Self, FromSexpError>;
-
-    fn from_sexp_string(s: &String) -> std::result::Result<Self, FromSexpError> {
-        Self::from_sexp_str(s.as_str())
-    }
-
-    fn from_sexp_str(s: &str) -> std::result::Result<Self, FromSexpError> {
-        match sexp::parse(s) {
-            Ok(s_exp) => Self::from_sexp(&s_exp),
-            Err(boxed_err) => {
-                match *boxed_err {
-                    sexp::Error { message, .. } => Err(FromSexpError { message: message.to_string() }),
-                }
-            }
-        }
-    }
-
-    fn to_sexp_string(&self) -> String {
-        self.to_sexp().to_string()
-    }
-}
-
 pub trait BindingsValue
-    : Clone + Debug + Deserialize + Display + Eq + PartialEq + PartialOrd + Serialize
+    : Clone + Debug + Default + Deserialize + Display + Eq + PartialEq + PartialOrd + Serialize
     {
     fn to_float(&self) -> Option<f64>;
     fn from_float(f64) -> Self;
@@ -51,7 +19,9 @@ pub trait BindingsValue
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct Bindings<T: BindingsValue> {
+    #[serde(default)]
     data: HashMap<String, T>,
+    #[serde(default)]
     equivalences: HashMap<String, BTreeSet<String>>,
 }
 
@@ -62,12 +32,18 @@ impl<T: BindingsValue> PartialEq for Bindings<T> {
 }
 impl<T: BindingsValue> Eq for Bindings<T> {}
 
-impl<T: BindingsValue> Bindings<T> {
-    pub fn new() -> Bindings<T> {
+impl<T: BindingsValue> Default for Bindings<T> {
+    fn default() -> Self {
         Bindings {
             data: HashMap::new(),
             equivalences: HashMap::new(),
         }
+    }
+}
+
+impl<T: BindingsValue> Bindings<T> {
+    pub fn new() -> Bindings<T> {
+        Bindings::default()
     }
 
     pub fn len(&self) -> usize {
@@ -204,7 +180,8 @@ pub trait Unify<T: BindingsValue>
     : Clone + Debug + Display + Eq + Serialize + Deserialize + PartialEq {
     fn unify(&self, &Self, &Bindings<T>) -> Option<Bindings<T>>;
     fn apply_bindings(&self, &Bindings<T>) -> Option<Self>;
-    fn constraints<'a>(&'a self) -> Vec<&'a constraints::Constraint<T>> {
+    // NOTE: replace constraints with validate_bindings
+    fn constraints<'a>(&'a self) -> Vec<&'a constraints::Constraint> {
         Vec::new()
     }
     fn variables(&self) -> Vec<String>;
@@ -220,7 +197,7 @@ pub trait Apply<T: BindingsValue, U: Unify<T>>
     : Clone + Debug + Display + Eq + PartialEq + Deserialize + Serialize {
     fn arg_count(&self) -> usize;
     fn apply(&self, &Vec<&U>, &Bindings<T>) -> Option<(U, Bindings<T>)>;
-    fn constraints<'a>(&'a self) -> Vec<&'a constraints::Constraint<T>>;
+    fn constraints<'a>(&'a self) -> Vec<&'a constraints::Constraint>;
     fn r_apply(&self, &U, &Bindings<T>) -> Option<(Vec<U>, Bindings<T>)>;
     fn snowflake(&self, String) -> Self;
 }

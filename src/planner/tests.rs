@@ -2,7 +2,6 @@ use planner::*;
 
 #[cfg(test)]
 mod planner_tests {
-    use core::ToSexp;
     use datum::Datum;
     use infer::Rule;
     use super::*;
@@ -11,12 +10,12 @@ mod planner_tests {
     /// where the 'spine' is the goal pattern and the unification indexes, as well as the number of subgoals
     fn assert_goal_spines_match(actual_goal: &Goal<Datum, Datum, Rule<Datum, Datum>>, expected_goal: &Goal<Datum, Datum, Rule<Datum, Datum>>) {
         if actual_goal.pattern != expected_goal.pattern {
-            panic!("Patterns don't match - expected:\n\t{}\nbut found:\n\t{}\n",
+            panic!("Patterns don't match - actual:\n\t{}\nbut expected:\n\t{}\n",
                    actual_goal.pattern,
                    expected_goal.pattern);
         }
         if actual_goal.unification_index != expected_goal.unification_index {
-            panic!("Unification indexes don't match - expected:\n\t{}\nbut found:\n\t{}\n",
+            panic!("Unification indexes don't match - actual:\n\t{}\nbut expected:\n\t{}\n",
                    actual_goal.unification_index,
                    expected_goal.unification_index);
         }
@@ -30,36 +29,39 @@ mod planner_tests {
     }
 
     pub fn setup_rules() -> Vec<Rule<Datum, Datum>> {
-        let physics_rule = Rule::from_sexp_str(r#"(defrule
-            ((((current-state ?s1) ((time ?t1)))
-              ((action 2) ((time ?t1))))
-             ((current-state ?s2) ((time ?t2)))
-             ((constraint-set (?diff1 1))
-              (constraint-set (?diff2 2))
-              (constraint-sum (?s1 ?diff2 ?s2))
-              (constraint-sum (?t1 ?diff1 ?t2)))))"#)
-            .expect("physics rule 1");
-        let physics_rule_2 = Rule::from_sexp_str(r#"(defrule
-         ((((current-state ?s1) ((time ?t1)))
-            ((action 1) ((time ?t1))))
-           ((current-state ?s2) ((time ?t2)))
-           ((constraint-set (?diff 1))
-            (constraint-sum (?t1 ?diff ?t2))
-            (constraint-sum (?s1 ?diff ?s2)))))"#)
-            .expect("physics rule 2");
-        let interaction_model_add_2 = Rule::from_sexp_str(r#"(defrule
-            (()
-            ((action 2) ((time ?t)))
-            ()))"#)
-            .expect("interaction model 2");
+        let physics_rule_1 = from_json!(Rule<Datum, Datum>, {
+            "lhs": [
+              {"vec": [{"vec": [{"str": "current-state"}, {"var": "?s1"}]},
+                       {"vec": [{"str": "time"}, {"var": "?t1"}]}]},
+              {"vec": [{"vec": [{"str": "action"}, {"int": 1}]},
+                       {"vec": [{"str": "time"}, {"var": "?t1"}]}]}],
+            "rhs": {"vec": [{"vec": [{"str": "current-state"}, {"var": "?s2"}]},
+                            {"vec": [{"str": "time"}, {"var": "?t2"}]}]},
+            "constraints": [{"set": {"variable": "?diff", "constant": 1}},
+                            {"sum": {"first": "?s1", "second": "?diff", "third": "?s2"}},
+                            {"sum": {"first": "?t1", "second": "?diff", "third": "?t2"}}]
+      });
+        let physics_rule_2 = from_json!(Rule<Datum, Datum>, {
+            "lhs": [
+              {"vec": [{"vec": [{"str": "current-state"}, {"var": "?s1"}]},
+                       {"vec": [{"str": "time"}, {"var": "?t1"}]}]},
+              {"vec": [{"vec": [{"str": "action"}, {"int": 2}]},
+                       {"vec": [{"str": "time"}, {"var": "?t1"}]}]}],
+            "rhs": {"vec": [{"vec": [{"str": "current-state"}, {"var": "?s2"}]},
+                            {"vec": [{"str": "time"}, {"var": "?t2"}]}]},
+            "constraints": [{"set": {"variable": "?diff", "constant": 1}},
+                            {"set": {"variable": "?diff2", "constant": 2}},
+                            {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
+                            {"sum": {"first": "?t1", "second": "?diff", "third": "?t2"}}]
+          });
+        let interaction_model_add_1 = from_json!(Rule<Datum, Datum>, {
+            "rhs": {"vec": [{"vec": [{"str": "action"}, {"int": 1}]},
+                            {"vec": [{"str": "time"}, {"var": "?t"}]}]}});
+        let interaction_model_add_2 = from_json!(Rule<Datum, Datum>, {
+            "rhs": {"vec": [{"vec": [{"str": "action"}, {"int": 2}]},
+                            {"vec": [{"str": "time"}, {"var": "?t"}]}]}});
 
-        let interaction_model_add_1 = Rule::from_sexp_str(r#"(defrule
-            (()
-            ((action 1) ((time ?t)))
-            ()))"#)
-            .expect("interaction model 1");
-
-        vec![physics_rule, interaction_model_add_2, physics_rule_2, interaction_model_add_1]
+        vec![physics_rule_2, interaction_model_add_2, physics_rule_1, interaction_model_add_1]
     }
 
     #[cfg(test)]
@@ -117,38 +119,48 @@ mod planner_tests {
 
         #[test]
         fn test_create_subgoals() {
-            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
+            let data = vec![datum_json!({"vec": [
+                {"vec":[{"str": "current-state"}, {"float": 0}]},
+                {"vec":[{"str": "time"}, {"float": 0}]},
+            ]})];
             let data_refs: Vec<&Datum> = data.iter().collect();
             let rules = setup_rules();
             let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
 
-            let goal_pattern = Datum::from_sexp_str("((current-state 2) ((time ?t)))").expect("Goal pattern datum");
-            let expected_bindings: Bindings<Datum> = vec![("?s2".to_string(), Datum::Float(2.0)),
-                                                          ("?diff1".to_string(), Datum::Float(1.0)),
-                                                          ("?diff2".to_string(), Datum::Float(2.0)),
-                                                          ("?s1".to_string(), Datum::Float(0.0))]
-                .into_iter()
-                .collect();
-            let expected_bindings = expected_bindings.set_binding(&"?t".to_string(), Datum::Variable("?t2".to_string()));
+            let goal_pattern = datum_json!({"vec": [
+                {"vec":[{"str": "current-state"}, {"float": 2}]},
+                {"vec":[{"str": "time"}, {"var": "?t"}]},
+            ]});
 
-            let expected_subgoals = vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1)))").expect("SubGoal 1 datum"),
-                                                   Vec::new(),
-                                                   vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                                                        Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                                                        Constraint::from_sexp_str(r#"(constraint-sum (?s1 ?diff2 ?s2))"#).expect("Constraint"),
-                                                        Constraint::from_sexp_str(r#"(constraint-sum (?t1 ?diff1 ?t2))"#).expect("Constraint")],
-                                                   expected_bindings.clone(),
-                                                   UnificationIndex::Datum(0),
-                                                   Vec::new()),
-                                         Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1)))").expect("SubGoal 1 datum"),
-                                                   Vec::new(),
-                                                   vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                                                        Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                                                        Constraint::from_sexp_str(r#"(constraint-sum (?s1 ?diff2 ?s2))"#).expect("Constraint"),
-                                                        Constraint::from_sexp_str(r#"(constraint-sum (?t1 ?diff1 ?t2))"#).expect("Constraint")],
-                                                   expected_bindings,
-                                                   UnificationIndex::Actor(1),
-                                                   Vec::new())];
+            let expected_subgoals = from_json!(Vec<Goal<Datum, Datum, Rule<Datum, Datum>>>, [
+                  {
+                    "pattern": {"vec": [
+                        {"vec":[{"str": "current-state"}, {"float": 0}]},
+                        {"vec":[{"str": "time"}, {"var": "?t1"}]},
+                    ]},
+                    "unification_index": {"datum": 0},
+                    "constraints": [
+                      {"set": {"variable": "?diff1", "constant": 1}},
+                      {"set": {"variable": "?diff2", "constant": 2}},
+                      {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
+                      {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}
+                    ]
+                 },
+                 {
+                    "pattern": {"vec": [
+                        {"vec":[{"str": "action"}, {"int": 2}]},
+                        {"vec":[{"str": "time"}, {"var": "?t1"}]},
+                    ]},
+                    "unification_index": {"actor": 1},
+                    "constraints": [
+                      {"set": {"variable": "?diff1", "constant": 1}},
+                      {"set": {"variable": "?diff2", "constant": 2}},
+                      {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
+                      {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}
+                    ]
+                 }
+            ]);
+
             let actual_subgoals = Goal::create_subgoals(&goal_pattern,
                                                         rule_refs[0],
                                                         &Vec::new(),
@@ -162,7 +174,7 @@ mod planner_tests {
                          idx,
                          expected_subgoal,
                          actual_subgoal);
-                assert_eq!(actual_subgoal, expected_subgoal);
+                assert_goal_spines_match(&actual_subgoal, &expected_subgoal);
             }
         }
     }
@@ -214,47 +226,73 @@ mod planner_tests {
 
         #[test]
         fn test_initial_increment_of_root_goal() {
-            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
+            let data = vec![datum_json!({"vec": [
+                {"vec":[{"str": "current-state"}, {"float": 0}]},
+                {"vec":[{"str": "time"}, {"float": 0}]},
+            ]})];
             let rules = setup_rules();
             let data_refs: Vec<&Datum> = data.iter().collect();
             let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
 
-            let goal = Goal::new(Datum::from_sexp_str("((current-state 4) ((time ?t)))").expect("Goal datum"),
-                                 Vec::new(),
-                                 Vec::new(),
-                                 Bindings::new(),
-                                 UnificationIndex::Init,
-                                 Vec::new());
+            let goal: Goal<Datum, Datum, Rule<Datum, Datum>> = from_json!(Goal<Datum, Datum, Rule<Datum, Datum>>, {
+                "pattern": {
+                  "vec": [
+                    {"vec": [{"str": "current-state"}, {"float": 4}]},
+                    {"vec": [{"str": "time"}, {"var": "?t"}]}
+                  ]
+                }
+            });
 
-            let expected_incremented_goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
-                Goal::new(goal.pattern.clone(),
-                          Vec::new(),
-                          Vec::new(),
-                          Bindings::new(),
-                          UnificationIndex::Actor(0),
-                          vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1::2)))").expect("SubGoal 1 datum"),
-                                         Vec::new(),
-                                         Vec::new(),
-                                         Bindings::new(),
-                                         UnificationIndex::Actor(0),
-                                         vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1::3)))").expect("SubGoal 1 datum"),
-                                                        Vec::new(),
-                                                        Vec::new(),
-                                                        Bindings::new(),
-                                                        UnificationIndex::Datum(0),
-                                                        Vec::new()),
-                                              Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::3)))").expect("SubGoal 1 datum"),
-                                                        Vec::new(),
-                                                        Vec::new(),
-                                                        Bindings::new(),
-                                                        UnificationIndex::Actor(1),
-                                                        Vec::new())]),
-                               Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::2)))").expect("SubGoal 2 datum"),
-                                         Vec::new(),
-                                         Vec::new(),
-                                         Bindings::new(),
-                                         UnificationIndex::Actor(1),
-                                         Vec::new())]);
+            let expected_incremented_goal = from_json!(Goal<Datum, Datum, Rule<Datum, Datum>>, {
+                "pattern": {
+                  "vec": [
+                    {"vec": [{"str": "current-state"}, {"float": 4}]},
+                    {"vec": [{"str": "time"}, {"var": "?t"}]},
+                  ]
+                },
+                "unification_index": {"actor": 0},
+                "subgoals": [
+                  {
+                      "pattern": {
+                        "vec": [
+                          {"vec": [{"str": "current-state"}, {"float": 2}]},
+                          {"vec": [{"str": "time"}, {"var": "?t1::2"}]},
+                        ]
+                      },
+                      "unification_index": {"actor": 0},
+                      "subgoals": [
+                        {
+                            "pattern": {
+                              "vec": [
+                                {"vec": [{"str": "current-state"}, {"float": 0}]},
+                                {"vec": [{"str": "time"}, {"var": "?t1::3"}]},
+                              ]
+                            },
+                            "unification_index": {"datum": 0}
+                        },
+                        {
+                            "pattern": {
+                              "vec": [
+                                {"vec": [{"str": "action"}, {"int": 2}]},
+                                {"vec": [{"str": "time"}, {"var": "?t1::3"}]},
+                              ]
+                            },
+                            "unification_index": {"actor": 1}
+                        }
+                      ]
+                  },
+                  {
+                      "pattern": {
+                        "vec": [
+                          {"vec": [{"str": "action"}, {"int": 2}]},
+                          {"vec": [{"str": "time"}, {"var": "?t1::2"}]}
+                        ]
+                      },
+                      "unification_index": {"actor": 1}
+                  }
+                ]
+            });
+
             let incremented_goal = goal.increment(&data_refs, &rule_refs, 2, 3).expect("Initial plan");
             assert_goal_spines_match(&incremented_goal, &expected_incremented_goal);
         }
@@ -266,71 +304,100 @@ mod planner_tests {
 
         #[test]
         fn test_goal_satisfied_returns_true_for_satisfying_datum() {
-            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
+            let data = vec![datum_json!({"vec": [
+                {"vec":[ {"str": "current-state"}, {"float": 0}]},
+                {"vec":[ {"str": "time"}, {"float": 0}]},
+            ]})];
             let data_refs: Vec<&Datum> = data.iter().collect();
 
-            let goal: Goal<Datum, Datum, Rule<Datum, Datum>> = Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t)))")
-                                                                             .expect("Goal datum"),
-                                                                         Vec::new(),
-                                                                         Vec::new(),
-                                                                         Bindings::new(),
-                                                                         UnificationIndex::Datum(0),
-                                                                         Vec::new());
-            let expected_bindings: Bindings<Datum> = vec![("?t".to_string(), Datum::Float(0.0))].into_iter().collect();
+            let goal = from_json!(Goal<Datum, Datum, Rule<Datum, Datum>>, {
+              "pattern": {"vec": [
+                  {"vec":[ {"str": "current-state"}, {"float": 0}]},
+                  {"vec":[ {"str": "time"}, {"var": "?t"}]},
+              ]},
+              "unification_index": {"datum": 0}
+            });
+            let expected_bindings = Bindings::new().set_binding(&"?t".to_string(), Datum::Float(0.0));
             assert_eq!(goal.satisified(&data_refs, &Vec::new(), &Bindings::new()),
                        Some(expected_bindings));
         }
 
         #[test]
         fn test_goal_satisfied_returns_false_for_non_satisfying_datum() {
-            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
+            let data = vec![datum_json!({"vec": [
+                {"vec":[ {"str": "current-state"}, {"float": 0}]},
+                {"vec":[ {"str": "time"}, {"float": 0}]},
+            ]})];
             let data_refs: Vec<&Datum> = data.iter().collect();
 
-            let goal: Goal<Datum, Datum, Rule<Datum, Datum>> = Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t)))")
-                                                                             .expect("Goal datum"),
-                                                                         Vec::new(),
-                                                                         Vec::new(),
-                                                                         Bindings::new(),
-                                                                         UnificationIndex::Datum(0),
-                                                                         Vec::new());
+            let goal = from_json!(Goal<Datum, Datum, Rule<Datum, Datum>>, {
+              "pattern": {"vec": [
+                  {"vec":[ {"str": "current-state"}, {"float": 2}]},
+                  {"vec":[ {"str": "time"}, {"var": "?t"}]},
+              ]},
+              "unification_index": {"datum": 0}
+            });
             assert_eq!(goal.satisified(&data_refs, &Vec::new(), &Bindings::new()),
                        None);
         }
 
         #[test]
         fn test_goal_satisfied_returns_true_for_shallowly_nested_plan() {
-            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
+            let data = vec![datum_json!({"vec": [
+                {"vec":[ {"str": "current-state"}, {"float": 0}]},
+                {"vec":[ {"str": "time"}, {"float": 0}]},
+            ]})];
             let data_refs: Vec<&Datum> = data.iter().collect();
             let rules = setup_rules();
             let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
 
-            let goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
-                Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t2)))").expect("SubGoal 1 datum"),
-                          Vec::new(),
-                          vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-sum (?s1 ?diff2 ?s2))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-sum (?t1 ?diff1 ?t2))").expect("Constraint")],
-                          Bindings::new(),
-                          UnificationIndex::Actor(0),
-                          vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t1)))").expect("SubGoal 1 datum"),
-                                         vec![Constraint::from_sexp_str(r#"(constraint-set (?diff1 1))"#).expect("Constraint"),
-                                              Constraint::from_sexp_str(r#"(constraint-set (?diff2 2))"#).expect("Constraint"),
-                                              Constraint::from_sexp_str(r#"(constraint-sum (?s1 ?diff2 ?s2))"#).expect("Constraint"),
-                                              Constraint::from_sexp_str(r#"(constraint-sum (?t1 ?diff1 ?t2))"#).expect("Constraint")],
-                                         Vec::new(),
-                                         Bindings::new(),
-                                         UnificationIndex::Datum(0),
-                                         Vec::new()),
-                               Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1)))").expect("SubGoal 1 datum"),
-                                         vec![Constraint::from_sexp_str(r#"(constraint-set (?diff1 1))"#).expect("Constraint"),
-                                              Constraint::from_sexp_str(r#"(constraint-set (?diff2 2))"#).expect("Constraint"),
-                                              Constraint::from_sexp_str(r#"(constraint-sum (?s1 ?diff2 ?s2))"#).expect("Constraint"),
-                                              Constraint::from_sexp_str(r#"(constraint-sum (?t1 ?diff1 ?t2))"#).expect("Constraint")],
-                                         Vec::new(),
-                                         Bindings::new(),
-                                         UnificationIndex::Actor(1),
-                                         Vec::new())]);
+            let goal = goal_json!(Goal<Datum, Datum, Rule<Datum, Datum>>, {
+              "pattern": {
+                "vec": [
+                  {"vec": [{"str": "current-state"}, {"float": 2}]},
+                  {"vec": [{"str": "time"}, {"var": "?t2"}]}
+                ]
+              },
+              "unification_index": {"actor": 0},
+              "constraints": [
+                {"set": {"variable": "?diff1", "constant": 1.0}},
+                {"set": {"variable": "?diff2", "constant": 2.0}},
+                {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
+                {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+              ],
+              "subgoals": [
+                {
+                    "pattern": {
+                      "vec": [
+                          {"vec": [{"str": "current-state"}, {"float": 0}]},
+                          {"vec": [{"str": "time"}, {"var": "?t1"}]}
+                      ],
+                    },
+                    "unification_index": {"datum": 0},
+                    "parental_constraints": [
+                        {"set": {"variable": "?diff1", "constant": 1.0}},
+                        {"set": {"variable": "?diff2", "constant": 2.0}},
+                        {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
+                        {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                     ],
+                },
+                {
+                    "pattern": {
+                      "vec": [
+                        {"vec": [{ "str": "action" }, { "int": 2 }]},
+                        {"vec": [{ "str": "time" }, { "var": "?t1" }]},
+                      ],
+                    },
+                    "unification_index": {"actor": 1},
+                    "parental_constraints": [
+                        {"set": {"variable": "?diff1", "constant": 1.0}},
+                        {"set": {"variable": "?diff2", "constant": 2.0}},
+                        {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
+                        {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                     ]
+                }
+              ]
+            });
             let result = goal.satisified(&data_refs, &rule_refs, &Bindings::new());
             assert_eq!(result.is_some(),
                        true,
@@ -345,131 +412,189 @@ mod planner_tests {
 
         #[test]
         fn test_goal_satisfied_returns_true_for_deeply_nested_plan() {
-            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
+            let data = vec![datum_json!({"vec": [
+                {"vec":[ {"str": "current-state"}, {"float": 0}]},
+                {"vec":[ {"str": "time"}, {"float": 0}]},
+            ]})];
             let data_refs: Vec<&Datum> = data.iter().collect();
             let rules = setup_rules();
             let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
 
-            let goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
-                Goal::new(Datum::from_sexp_str("((current-state 4) ((time ?t2)))").expect("Goal datum"),
-                          Vec::new(),
-                          vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-sum (?s2 ?diff2 ?s1))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-sum (?t2 ?diff1 ?t1))").expect("Constraint")],
-                          Bindings::new(),
-                          UnificationIndex::Actor(0),
-                          vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1)))").expect("SubGoal 1 datum"),
-                                         vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?s0 ?diff2 ?s1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?t0 ?diff1 ?t1))").expect("Constraint")],
-                                         vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?s1 ?diff2 ?s2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?t1 ?diff1 ?t2))").expect("Constraint")],
-                                         Bindings::new(),
-                                         UnificationIndex::Actor(0),
-                                         vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time ?t0)))").expect("SubGoal 1 datum"),
-                                                        vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-sum (?s0 ?diff2 ?s1))")
-                                                                 .expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-sum (?t0 ?diff1 ?t1))")
-                                                                 .expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-sum (?s1 ?diff2 ?s2))")
-                                                                 .expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-sum (?t1 ?diff1 ?t2))")
-                                                                 .expect("Constraint")],
-                                                        Vec::new(),
-                                                        Bindings::new(),
-                                                        UnificationIndex::Datum(0),
-                                                        Vec::new()),
-                                              Goal::new(Datum::from_sexp_str("((action 2) ((time ?t1::1)))").expect("SubGoal 1 datum"),
-                                                        vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-sum (?s0 ?diff2 ?s1))")
-                                                                 .expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-sum (?t0 ?diff1 ?t1))")
-                                                                 .expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-sum (?s1 ?diff2 ?s2))")
-                                                                 .expect("Constraint"),
-                                                             Constraint::from_sexp_str("(constraint-sum (?t1 ?diff1 ?t2))")
-                                                                 .expect("Constraint")],
-                                                        Vec::new(),
-                                                        Bindings::new(),
-                                                        UnificationIndex::Actor(1),
-                                                        Vec::new())]),
-                               Goal::new(Datum::from_sexp_str("((action 2) ((time ?t2::1)))").expect("SubGoal 2 datum"),
-                                         vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?s0 ?diff2 ?s1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?t0 ?diff1 ?t1))").expect("Constraint")],
-                                         vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?s1 ?diff2 ?s2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?t1 ?diff1 ?t2))").expect("Constraint")],
-                                         Bindings::new(),
-                                         UnificationIndex::Actor(1),
-                                         Vec::new())]);
+            let goal = goal_json!(Goal<Datum, Datum, Rule<Datum, Datum>>, {
+              "pattern": {
+                "vec": [
+                  {"vec": [{"str": "current-state"}, {"float": 4}]},
+                  {"vec": [{"str": "time"}, {"var": "?t3"}]}
+                ]
+              },
+              "unification_index": {"actor": 0},
+              "constraints": [
+                {"set": {"variable": "?diff1", "constant": 1.0}},
+                {"set": {"variable": "?diff2", "constant": 2.0}},
+                {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}},
+                {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}},
+              ],
+              "subgoals": [
+                {
+                  "pattern": {
+                    "vec": [
+                      {"vec": [{"str": "current-state"}, {"float": 2}]},
+                      {"vec": [{"str": "time"}, {"var": "?t2"}]}
+                    ]
+                  },
+                  "unification_index": {"actor": 0},
+                  "parental_constraints": [
+                      {"set": {"variable": "?diff1", "constant": 1.0}},
+                      {"set": {"variable": "?diff2", "constant": 2.0}},
+                      {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}},
+                      {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}},
+                   ],
+                  "constraints": [
+                    {"set": {"variable": "?diff1", "constant": 1.0}},
+                    {"set": {"variable": "?diff2", "constant": 2.0}},
+                    {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
+                    {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                  ],
+                  "subgoals": [
+                    {
+                        "pattern": {
+                          "vec": [
+                              {"vec": [{"str": "current-state"}, {"float": 0}]},
+                              {"vec": [{"str": "time"}, {"var": "?t1"}]}
+                          ],
+                        },
+                        "unification_index": {"datum": 0},
+                        "parental_constraints": [
+                            {"set": {"variable": "?diff1", "constant": 1.0}},
+                            {"set": {"variable": "?diff2", "constant": 2.0}},
+                            {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}},
+                            {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}},
+                            {"set": {"variable": "?diff1", "constant": 1.0}},
+                            {"set": {"variable": "?diff2", "constant": 2.0}},
+                            {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
+                            {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                         ],
+                    },
+                    {
+                        "pattern": {
+                          "vec": [
+                            {"vec": [{ "str": "action" }, { "int": 2 }]},
+                            {"vec": [{ "str": "time" }, { "var": "?t1" }]},
+                          ],
+                        },
+                        "unification_index": {"actor": 1},
+                        "parental_constraints": [
+                            {"set": {"variable": "?diff1", "constant": 1.0}},
+                            {"set": {"variable": "?diff2", "constant": 2.0}},
+                            {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}},
+                            {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}},
+                            {"set": {"variable": "?diff1", "constant": 1.0}},
+                            {"set": {"variable": "?diff2", "constant": 2.0}},
+                            {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
+                            {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                         ]
+                    }
+                  ]
+                },
+                {
+                    "pattern": {
+                      "vec": [
+                        {"vec": [{ "str": "action" }, { "int": 2 }]},
+                        {"vec": [{ "str": "time" }, { "var": "?t2" }]},
+                      ],
+                    },
+                    "unification_index": {"actor": 1},
+                    "parental_constraints": [
+                        {"set": {"variable": "?diff1", "constant": 1.0}},
+                        {"set": {"variable": "?diff2", "constant": 2.0}},
+                        {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}},
+                        {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}},
+                     ]
+                }
+              ]
+            });
+
             let result = goal.satisified(&data_refs, &rule_refs, &Bindings::new());
             assert_eq!(result.is_some(),
                        true,
                        "satisfied should have returned bindings");
 
             let bindings = result.unwrap();
-            assert_eq!(bindings.get_binding(&"?t0".to_string()),
-                       Some(Datum::Float(0.0)));
             assert_eq!(bindings.get_binding(&"?t1".to_string()),
-                       Some(Datum::Float(1.0)));
+                       Some(Datum::Float(0.0)));
             assert_eq!(bindings.get_binding(&"?t2".to_string()),
+                       Some(Datum::Float(1.0)));
+            assert_eq!(bindings.get_binding(&"?t3".to_string()),
                        Some(Datum::Float(2.0)));
         }
 
         #[test]
         fn test_goal_satisfied_returns_false_for_incomplete_nested_plan() {
-            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
+            let data = vec![datum_json!({"vec": [
+                {"vec":[ {"str": "current-state"}, {"float": 0}]},
+                {"vec":[ {"str": "time"}, {"float": 0}]},
+            ]})];
             let data_refs: Vec<&Datum> = data.iter().collect();
             let rules = setup_rules();
             let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
 
-            let goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
-                Goal::new(Datum::from_sexp_str("((current-state 4) ((time ?t2)))").expect("Goal datum"),
-                          Vec::new(),
-                          vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-sum (?s2 ?diff2 ?s1))").expect("Constraint"),
-                               Constraint::from_sexp_str("(constraint-sum (?t2 ?diff1 ?t1))").expect("Constraint")],
-                          Bindings::new(),
-                          UnificationIndex::Actor(0),
-                          vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t1)))").expect("SubGoal 1 datum"),
-                                         vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?s0 ?diff2 ?s1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?t0 ?diff1 ?t1))").expect("Constraint")],
-                                         vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?s1 ?diff2 ?s2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?t1 ?diff1 ?t2))").expect("Constraint")],
-                                         Bindings::new(),
-                                         UnificationIndex::Init,
-                                         Vec::new()),
-                               Goal::new(Datum::from_sexp_str("((action 2) ((time ?t2::1)))").expect("SubGoal 2 datum"),
-                                         vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?s0 ?diff2 ?s1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?t0 ?diff1 ?t1))").expect("Constraint")],
-                                         vec![Constraint::from_sexp_str("(constraint-set (?diff1 1))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-set (?diff2 2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?s1 ?diff2 ?s2))").expect("Constraint"),
-                                              Constraint::from_sexp_str("(constraint-sum (?t1 ?diff1 ?t2))").expect("Constraint")],
-                                         Bindings::new(),
-                                         UnificationIndex::Init,
-                                         Vec::new())]);
+            let goal = goal_json!(Goal<Datum, Datum, Rule<Datum, Datum>>, {
+              "pattern": {
+                "vec": [
+                  {"vec": [{"str": "current-state"}, {"float": 4}]},
+                  {"vec": [{"str": "time"}, {"var": "?t2"}]}
+                ]
+              },
+              "constraints": [
+                {"set": {"variable": "?diff1", "constant": 1.0}},
+                {"set": {"variable": "?diff2", "constant": 2.0}},
+                {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
+                {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+              ],
+              "unification_index": {"actor": 0},
+              "subgoals": [
+                {
+                    "pattern": {
+                      "vec": [
+                          {"vec": [{"str": "current-state"}, {"float": 2}]},
+                          {"vec": [{"str": "time"}, {"var": "?t1"}]}
+                      ],
+                    },
+                    "parental_constraints": [
+                        {"set": {"variable": "?diff1", "constant": 1.0}},
+                        {"set": {"variable": "?diff2", "constant": 2.0}},
+                        {"sum": {"first": "?s0", "second": "?diff2", "third": "?s1"}},
+                        {"sum": {"first": "?t0", "second": "?diff1", "third": "?t1"}},
+                     ],
+                    "constraints": [
+                        {"set": {"variable": "?diff1", "constant": 1.0}},
+                        {"set": {"variable": "?diff2", "constant": 2.0}},
+                        {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
+                        {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                     ],
+                },
+                {
+                    "pattern": {
+                      "vec": [
+                        {"vec": [{ "str": "action" }, { "int": 2 }]},
+                        {"vec": [{ "str": "time" }, { "var": "?t2::1" }]},
+                      ],
+                    },
+                    "parental_constraints": [
+                        {"set": {"variable": "?diff1", "constant": 1.0}},
+                        {"set": {"variable": "?diff2", "constant": 2.0}},
+                        {"sum": {"first": "?s0", "second": "?diff2", "third": "?s1"}},
+                        {"sum": {"first": "?t0", "second": "?diff1", "third": "?t1"}},
+                     ],
+                     "constraints": [
+                        {"set": {"variable": "?diff1", "constant": 1.0}},
+                        {"set": {"variable": "?diff2", "constant": 2.0}},
+                        {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
+                        {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                     ]
+                }
+              ]
+            });
             assert_eq!(goal.satisified(&data_refs, &rule_refs, &Bindings::new()),
                        None);
         }
@@ -482,9 +607,16 @@ mod planner_tests {
 
         #[test]
         fn test_plan_iterator() {
-            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("Test datum")];
+            let data = vec![datum_json!({"vec": [
+                {"vec":[ {"str": "current-state"}, {"float": 0}]},
+                {"vec":[ {"str": "time"}, {"float": 0}]},
+            ]})];
             let rules = setup_rules();
-            let initial_goal = Goal::new(Datum::from_sexp_str("((current-state 4) ((time ?t)))").expect("Goal datum"),
+            let goal_pattern = datum_json!({"vec": [
+                {"vec":[ {"str": "current-state"}, {"float": 4}]},
+                {"vec":[ {"str": "time"}, {"var": "?t"}]},
+            ]});
+            let initial_goal = Goal::new(goal_pattern,
                                          Vec::new(),
                                          Vec::new(),
                                          Bindings::new(),
@@ -498,35 +630,55 @@ mod planner_tests {
                                            rules.iter().collect(),
                                            100);
 
-            let expected_final_goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
-                Goal::new(Datum::from_sexp_str("((current-state 4) ((time 2)))").expect("Goal datum"),
-                          Vec::new(),
-                          Vec::new(),
-                          Bindings::new(),
-                          UnificationIndex::Actor(0),
-                          vec![Goal::new(Datum::from_sexp_str("((current-state 2) ((time 1)))").expect("SubGoal 1 datum"),
-                                         Vec::new(),
-                                         Vec::new(),
-                                         Bindings::new(),
-                                         UnificationIndex::Actor(0),
-                                         vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time 0)))").expect("SubGoal 1 datum"),
-                                                        Vec::new(),
-                                                        Vec::new(),
-                                                        Bindings::new(),
-                                                        UnificationIndex::Datum(0),
-                                                        Vec::new()),
-                                              Goal::new(Datum::from_sexp_str("((action 2) ((time 0)))").expect("SubGoal 1 datum"),
-                                                        Vec::new(),
-                                                        Vec::new(),
-                                                        Bindings::new(),
-                                                        UnificationIndex::Actor(1),
-                                                        Vec::new())]),
-                               Goal::new(Datum::from_sexp_str("((action 2) ((time 1)))").expect("SubGoal 2 datum"),
-                                         Vec::new(),
-                                         Vec::new(),
-                                         Bindings::new(),
-                                         UnificationIndex::Actor(1),
-                                         Vec::new())]);
+            let expected_final_goal = goal_json!(Goal<Datum, Datum, Rule<Datum, Datum>>, {
+              "pattern": {
+                "vec": [
+                  {"vec": [{"str": "current-state"}, {"float": 4}]},
+                  {"vec": [{"str": "time"}, {"float": 2}]}
+                ]
+              },
+              "unification_index": {"actor": 0},
+              "subgoals": [
+                {
+                  "pattern": {
+                    "vec": [
+                      {"vec": [{"str": "current-state"}, {"float": 2}]},
+                      {"vec": [{"str": "time"}, {"float": 1}]}
+                    ]
+                  },
+                  "unification_index": {"actor": 0},
+                  "subgoals": [
+                    {
+                        "pattern": {
+                          "vec": [
+                              {"vec": [{"str": "current-state"}, {"float": 0}]},
+                              {"vec": [{"str": "time"}, {"float": 0}]}
+                          ],
+                        },
+                        "unification_index": {"datum": 0},
+                    },
+                    {
+                        "pattern": {
+                          "vec": [
+                            {"vec": [{ "str": "action" }, { "int": 2 }]},
+                            {"vec": [{ "str": "time" }, { "float": 0 }]},
+                          ],
+                        },
+                        "unification_index": {"actor": 1},
+                    }
+                  ]
+                },
+                {
+                    "pattern": {
+                      "vec": [
+                        {"vec": [{ "str": "action" }, { "int": 2 }]},
+                        {"vec": [{ "str": "time" }, { "float": 1 }]},
+                      ],
+                    },
+                    "unification_index": {"actor": 1},
+                }
+              ]
+            });
             let result = planner.next();
             assert_eq!(result.is_some(), true);
             let (final_goal, bindings) = result.unwrap();
@@ -548,22 +700,26 @@ mod planner_tests {
             // (vp verb np)
 
             // (sen np vp)
-            let rules: Vec<Rule<Datum, Datum>> = vec![Rule::from_sexp_str("(defrule ((a) (det) ()))").unwrap(),
-                                                      Rule::from_sexp_str("(defrule ((the) (det) ()))").unwrap(),
-                                                      Rule::from_sexp_str("(defrule ((chased) (verb) ()))").unwrap(),
-                                                      Rule::from_sexp_str("(defrule ((dog) (noun) ()))").unwrap(),
-                                                      Rule::from_sexp_str("(defrule ((cat) (noun) ()))").unwrap(),
-                                                      Rule::from_sexp_str("(defrule (((det) (noun)) (np) ()))").unwrap(),
-                                                      Rule::from_sexp_str("(defrule (((verb) (np)) (vp) ()))").unwrap(),
-                                                      Rule::from_sexp_str("(defrule (((np) (vp)) (sen) ()))").unwrap()];
+            let rules: Vec<Rule<Datum, Datum>> = from_json!(Vec<Rule<Datum, Datum>>, [
+              {"lhs": [{"str": "a"}], "rhs": {"str": "det"}},
+              {"lhs": [{"str": "the"}], "rhs": {"str": "det"}},
+              {"lhs": [{"str": "chased"}], "rhs": {"str": "verb"}},
+              {"lhs": [{"str": "chased"}], "rhs": {"str": "verb"}},
+              {"lhs": [{"str": "dog"}], "rhs": {"str": "noun"}},
+              {"lhs": [{"str": "cat"}], "rhs": {"str": "noun"}},
+              {"lhs": [{"str": "det"}, {"str": "noun"}], "rhs": {"str": "np"}},
+              {"lhs": [{"str": "verb"}, {"str": "np"}], "rhs": {"str": "vp"}},
+              {"lhs": [{"str": "np"}, {"str": "vp"}], "rhs": {"str": "sen"}}
+            ]);
+            let data: Vec<Datum> = from_json!(Vec<Datum>, [
+              {"str": "a"},
+              {"str": "the"},
+              {"str": "dog"},
+              {"str": "cat"},
+              {"str": "chased"}
+            ]);
 
-            let data: Vec<Datum> = vec![Datum::from_sexp_str("a").unwrap(),
-                                        Datum::from_sexp_str("the").unwrap(),
-                                        Datum::from_sexp_str("dog").unwrap(),
-                                        Datum::from_sexp_str("cat").unwrap(),
-                                        Datum::from_sexp_str("chased").unwrap()];
-
-            let initial_goal = Goal::with_pattern(Datum::from_sexp_str("(sen)").unwrap());
+            let initial_goal = Goal::with_pattern(datum_json!({"str": "sen"}));
             let mut planner = Planner::new(&initial_goal,
                                            &Bindings::new(),
                                            &PlanningConfig {
@@ -589,49 +745,76 @@ mod planner_tests {
         fn test_plan_with_goal_constraint() {
             /*
              * Verify that we backtrack if a constraint is violated.
+             * Specifically, we test this by ensuring that the immediate solution
+             * (just add 2 once) violates a constraint, forcing the algorithm
+             * to add 1 twice.
              */
             let rules = setup_rules();
-            let constraints: Vec<super::Constraint<Datum>> = vec!["(constraint-set (?min_time 2))", "(constraint-greater-than (?t2 ?min_time))"]
-                .into_iter()
-                .map(|s| super::Constraint::from_sexp_str(s).expect("Expected constraint to be parsed"))
-                .collect();
 
-            let data = vec![Datum::from_sexp_str("((current-state 0) ((time 1)))").expect("d1")];
-            let initial_goal = Goal::new(Datum::from_sexp_str("((current-state 2) ((time ?t2)))").expect("d2"),
-                                         Vec::new(),
-                                         constraints,
-                                         Bindings::new(),
-                                         UnificationIndex::Init,
-                                         Vec::new());
-            let expected_final_goal: Goal<Datum, Datum, Rule<Datum, Datum>> =
-                Goal::new(Datum::from_sexp_str("((current-state 2) ((time 3)))").expect("Goal datum"),
-                          Vec::new(),
-                          Vec::new(),
-                          Bindings::new(),
-                          UnificationIndex::Actor(2),
-                          vec![Goal::new(Datum::from_sexp_str("((current-state 1) ((time 2)))").expect("SubGoal 1 datum"),
-                                         Vec::new(),
-                                         Vec::new(),
-                                         Bindings::new(),
-                                         UnificationIndex::Actor(2),
-                                         vec![Goal::new(Datum::from_sexp_str("((current-state 0) ((time 1)))").expect("SubGoal 1 datum"),
-                                                        Vec::new(),
-                                                        Vec::new(),
-                                                        Bindings::new(),
-                                                        UnificationIndex::Datum(0),
-                                                        Vec::new()),
-                                              Goal::new(Datum::from_sexp_str("((action 1) ((time 1)))").expect("SubGoal 1 datum"),
-                                                        Vec::new(),
-                                                        Vec::new(),
-                                                        Bindings::new(),
-                                                        UnificationIndex::Actor(3),
-                                                        Vec::new())]),
-                               Goal::new(Datum::from_sexp_str("((action 1) ((time 2)))").expect("SubGoal 2 datum"),
-                                         Vec::new(),
-                                         Vec::new(),
-                                         Bindings::new(),
-                                         UnificationIndex::Actor(3),
-                                         Vec::new())]);
+            let data = vec![datum_json!({"vec": [
+                {"vec":[{"str": "current-state"}, {"float": 0}]},
+                {"vec":[{"str": "time"}, {"float": 1}]},
+            ]})];
+            let initial_goal = from_json!(Goal<Datum, Datum, Rule<Datum, Datum>>, {
+                "pattern": {"vec": [
+                    {"vec":[ {"str": "current-state"}, {"float": 2}]},
+                    {"vec":[ {"str": "time"}, {"var": "?t2"}]},
+                ]},
+                "unification_index": {"datum": 0},
+                "constraints": [
+                  {
+                    "set": {
+                      "variable": "?min_time",
+                      "constant": 2,
+                    },
+                  },
+                  {
+                    ">": {
+                      "left": "?t2",
+                      "right": "?min_time",
+                    }
+                  }
+                ]
+            });
+            let expected_final_goal = from_json!(Goal<Datum, Datum, Rule<Datum, Datum>>, {
+                "pattern": {"vec": [
+                    {"vec":[ {"str": "current-state"}, {"float": 2}]},
+                    {"vec":[ {"str": "time"}, {"float": 3}]},
+                ]},
+                "unification_index": {"actor": 2},
+                "subgoals": [
+                  {
+                    "pattern": {"vec": [
+                        {"vec":[ {"str": "current-state"}, {"float": 1}]},
+                        {"vec":[ {"str": "time"}, {"float": 2}]},
+                    ]},
+                    "unification_index": {"actor": 2},
+                    "subgoals": [
+                      {
+                        "pattern": {"vec": [
+                            {"vec":[ {"str": "current-state"}, {"float": 0}]},
+                            {"vec":[ {"str": "time"}, {"float": 1}]},
+                        ]},
+                        "unification_index": {"datum": 0},
+                      },
+                      {
+                        "pattern": {"vec": [
+                            {"vec":[ {"str": "action"}, {"int": 1}]},
+                            {"vec":[ {"str": "time"}, {"float": 1}]},
+                        ]},
+                        "unification_index": {"actor": 3},
+                      }
+                    ]
+                  },
+                  {
+                    "pattern": {"vec": [
+                        {"vec":[ {"str": "action"}, {"int": 1}]},
+                        {"vec":[ {"str": "time"}, {"float": 2}]},
+                    ]},
+                    "unification_index": {"actor": 3},
+                  }
+                ]
+            });
             let mut planner = Planner::new(&initial_goal,
                                            &Bindings::new(),
                                            &PlanningConfig {

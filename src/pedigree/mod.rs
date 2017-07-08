@@ -1,8 +1,8 @@
+use serde_json;
 use std;
 use std::collections::btree_map::BTreeMap;
 use std::collections::btree_set::BTreeSet;
 use itertools::Itertools;
-use serde_yaml;
 
 #[cfg(test)]
 mod tests;
@@ -22,13 +22,11 @@ pub struct Origin {
     pub args: Vec<String>,
 }
 
-
 impl std::fmt::Display for Origin {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", serde_yaml::to_string(&self).unwrap())
+        write!(f, "{}", serde_json::to_string(&self).unwrap())
     }
 }
-
 
 impl Origin {
     pub fn new() -> Self {
@@ -244,9 +242,15 @@ impl InferenceGraphBuilder {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct InferenceChain {
     pub elements: Vec<(Vec<(String, Option<Origin>)>)>,
+}
+
+impl std::fmt::Display for InferenceChain {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", serde_json::to_string(&self).unwrap())
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

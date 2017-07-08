@@ -1,8 +1,7 @@
+use serde_json;
 use std;
 use std::str;
 use std::collections::HashMap;
-
-use sexp;
 
 use core;
 use utils;
@@ -26,6 +25,8 @@ pub enum Datum {
         #[serde(rename="args")]
         args: Vec<Datum>,
     },
+    #[serde(rename="vec")]
+    Vector(Vec<Datum>),
 }
 
 impl Datum {
@@ -87,66 +88,11 @@ impl Datum {
             _ => None,
         }
     }
+}
 
-    fn from_sexp(s: &sexp::Sexp) -> std::result::Result<Self, core::FromSexpError> {
-        fn is_variable_name(s: &String) -> bool {
-            match s.chars().next() {
-                Some(val) if val == '?' => true,
-                Some(_) => false,
-                None => false,
-            }
-        }
-
-        match *s {
-            sexp::Sexp::Atom(ref atom) => {
-                let x = match *atom {
-                    sexp::Atom::S(ref s) if is_variable_name(&s) => Datum::Variable(s.clone()),
-                    sexp::Atom::S(ref s) => Datum::String(s.clone()),
-                    sexp::Atom::I(ref s) => Datum::Float(s.clone() as f64),
-                    sexp::Atom::F(ref s) => Datum::Float(s.clone()),
-                };
-                Ok(x)
-            }
-            sexp::Sexp::List(ref elements) => {
-                let mut element_iter = elements.iter();
-                match element_iter.next() {
-                    Some(head_sexp) => {
-                        Datum::from_sexp(head_sexp).and_then(|head| {
-                            let mut args: Vec<Datum> = Vec::new();
-                            for arg_sexp in element_iter {
-                                match Datum::from_sexp(arg_sexp) {
-                                    Ok(arg) => args.push(arg),
-                                    err => return err,
-                                }
-                            }
-                            Ok(Datum::Compound {
-                                head: Box::new(head),
-                                args: args,
-                            })
-                        })
-                    }
-                    None => Ok(Datum::Nil),
-                }
-            }
-        }
-    }
-
-    fn to_sexp(&self) -> sexp::Sexp {
-        match *self {
-            Datum::Nil => sexp::Sexp::List(Vec::new()),
-            Datum::String(ref s) => sexp::Sexp::Atom(sexp::Atom::S(s.clone())),
-            Datum::Variable(ref v) => sexp::Sexp::Atom(sexp::Atom::S(v.clone())),
-            Datum::Int(ref i) => sexp::Sexp::Atom(sexp::Atom::I(i.clone())),
-            Datum::Float(ref f) => sexp::Sexp::Atom(sexp::Atom::F(f.clone())),
-            Datum::Compound { ref head, ref args } => {
-                let mut vec: Vec<sexp::Sexp> = Vec::with_capacity(args.len() + 1 as usize);
-                vec.push(Datum::to_sexp(head));
-                for arg in args {
-                    vec.push(Datum::to_sexp(arg));
-                }
-                sexp::Sexp::List(vec)
-            }
-        }
+impl Default for Datum {
+    fn default() -> Self {
+        Datum::Nil
     }
 }
 
@@ -183,6 +129,12 @@ impl PartialEq for Datum {
                     _ => false,
                 }
             }
+            Datum::Vector(ref args) => {
+                match *other {
+                    Datum::Vector(ref args2) => args == args2,
+                    _ => false,
+                }
+            }
             Datum::Nil => {
                 match *other {
                     Datum::Nil => true,
@@ -190,15 +142,6 @@ impl PartialEq for Datum {
                 }
             }
         }
-    }
-}
-
-impl core::ToSexp for Datum {
-    fn to_sexp(&self) -> sexp::Sexp {
-        self.to_sexp()
-    }
-    fn from_sexp(s_exp: &sexp::Sexp) -> std::result::Result<Self, core::FromSexpError> {
-        Datum::from_sexp(s_exp)
     }
 }
 
@@ -242,6 +185,12 @@ impl core::Unify<Datum> for Datum {
                     _ => None,
                 }
             }
+            Datum::Vector(ref args) => {
+                match *other {
+                    Datum::Vector(ref args2) if args.len() == args2.len() => unify_args(args, args2, &bindings),
+                    _ => None,
+                }
+            }
             _ => {
                 match *other {
                     Datum::Variable(ref var_name) => bindings.update_bindings(var_name, self),
@@ -258,11 +207,14 @@ impl core::Unify<Datum> for Datum {
     }
 
     fn apply_bindings(&self, bindings: &core::Bindings<Self>) -> Option<Self> {
+        fn apply_bindings_to_args(args: &Vec<Datum>, bindings: &core::Bindings<Datum>) -> Option<Vec<Datum>> {
+            utils::filter_map_all(&mut args.iter(), &|arg| arg.apply_bindings(bindings))
+        }
         match *self {
             Datum::Variable(ref var_name) => bindings.get_binding(var_name).or_else(|| Some(self.clone())),
             Datum::Compound { ref head, ref args } => {
                 head.apply_bindings(bindings).and_then(|bound_head| {
-                    utils::filter_map_all(&mut args.iter(), &|arg| arg.apply_bindings(bindings)).and_then(|bound_args| {
+                    apply_bindings_to_args(args, bindings).and_then(|bound_args| {
                         Some(Datum::Compound {
                             head: Box::new(bound_head),
                             args: bound_args,
@@ -270,6 +222,7 @@ impl core::Unify<Datum> for Datum {
                     })
                 })
             }
+            Datum::Vector(ref args) => apply_bindings_to_args(args, bindings).and_then(|args| Some(Datum::Vector(args))),
             _ => Some(self.clone()),
         }
     }
@@ -284,6 +237,13 @@ impl core::Unify<Datum> for Datum {
                 }
                 variables
             }
+            Datum::Vector(ref args) => {
+                let mut variables = Vec::new();
+                for arg in args.iter() {
+                    variables.extend(arg.variables().into_iter());
+                }
+                variables
+            }
             _ => Vec::new(),
         }
     }
@@ -292,6 +252,7 @@ impl core::Unify<Datum> for Datum {
         match *self {
             Datum::Variable(ref v) if v == q => Some(self),
             Datum::Compound { ref head, ref args } => head.get_variable(q).or_else(|| args.iter().filter_map(|arg| arg.get_variable(q)).next()),
+            Datum::Vector(ref args) => args.iter().filter_map(|arg| arg.get_variable(q)).next(),
             _ => None,
         }
     }
@@ -310,6 +271,7 @@ impl core::Unify<Datum> for Datum {
                     args: args.iter().map(|arg| arg.rename_variables(renamed_variables)).collect(),
                 }
             }
+            Datum::Vector(ref args) => Datum::Vector(args.iter().map(|arg| arg.rename_variables(renamed_variables)).collect()),
             _ => self.clone(),
         }
     }
@@ -321,21 +283,15 @@ impl core::Unify<Datum> for Datum {
 
 impl std::fmt::Display for Datum {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_sexp())
+        write!(f, "{}", serde_json::to_string(&self).unwrap())
     }
 }
 
-macro_rules! assert_some_value {
-($x:expr, $y:expr) => (match $x {
-    Some(val) => assert_eq!(val, $y),
-    None => panic!("Expected value but received 'None'"),
-    })
-}
-
-macro_rules! assert_none {
-($x:expr) => (match $x {
-    None => (),
-    Some(val) => panic!("Expected 'None' received {}", val),
+macro_rules! datum_json {
+    ($json: tt) => ({
+        use serde_json;
+        let d: Datum = serde_json::from_value(json!($json)).expect("Expected json decoding");
+        d
     })
 }
 
@@ -343,9 +299,8 @@ macro_rules! assert_none {
 mod tests {
     use std::str;
     use super::*;
-    use super::super::core::{Bindings, ToSexp, Unify};
+    use super::super::core::{Bindings, Unify};
     extern crate serde_json;
-    extern crate serde_yaml;
 
     #[test]
     fn test_round_trip_json_serialization() {
@@ -357,126 +312,137 @@ mod tests {
     }
 
     #[test]
-    fn test_round_trip_yaml_serialization() {
-        let s = r#"---
-compound:
-  head:
-    str: isa
-  args:
-    -
-      str: man
-    -
-      str: mortal"#;
-
-        let d: Datum = serde_yaml::from_str(&s).unwrap();
-        let sd = serde_yaml::to_string(&d).unwrap();
-        let d2: Datum = serde_yaml::from_str(&sd).unwrap();
-        assert_eq!(d, d2);
-    }
-
-    #[test]
-    fn test_round_trip_serialization() {
-        let s = "(isa man mortal)";
-        assert_eq!(format!("{}", Datum::from_sexp_str(&s).unwrap()), s);
-    }
-
-    #[test]
-    fn test_parse_empty_string() {
-        assert_eq!(Datum::from_sexp_str("").is_err(), true);
-    }
-
-    #[test]
-    fn test_parse_nil() {
-        assert_eq!(Datum::from_sexp_str("()").ok(), Some(Datum::Nil));
-    }
-
-    #[test]
-    fn test_from_str_error_on_malformed_input() {
-        assert_eq!(Datum::from_sexp_str(&"(").is_err(), true)
-    }
-
-    #[test]
-    fn test_unify_passes_when_exact_match() {
-        let d = Datum::from_sexp_str("(isa socrates man)").unwrap();
-        let bindings = d.unify(&d, &Bindings::new());
-        assert_some_value!(bindings, Bindings::new());
-    }
-
-    #[test]
     fn test_unify_passes_when_variables_match() {
-        let d = Datum::from_sexp_str("(action 1 ?::t1)").unwrap();
+        let d = from_json!(Datum, {
+            "vec": [{"str": "action"}, {"int": 1}, {"var": "?::t1"}]
+        });
         let bindings = Bindings::new().set_binding(&"?::t1".to_string(), Datum::from_float(2.0));
         assert_eq!(d.unify(&d, &bindings), Some(bindings));
     }
 
     #[test]
     fn test_unify_passes_when_match_with_new_variable_in_self() {
-        let d = Datum::from_sexp_str("(isa socrates ?x)").unwrap();
-        let d2 = Datum::from_sexp_str("(isa socrates man)").unwrap();
-        let expected_bindings: Bindings<Datum> = vec![("?x".to_string(), Datum::from_sexp_str("man").unwrap())].into_iter().collect();
+        let d = from_json!(Datum, {
+            "vec": [{"str": "isa"}, {"str": "socrates"}, {"var": "?x"}]
+        });
+        let d2 = from_json!(Datum, {
+            "vec": [{"str": "isa"}, {"str": "socrates"}, {"str": "man"}]
+        });
+        let expected_bindings = Bindings::new().set_binding(&"?x".to_string(), Datum::String("man".to_string()));
         let actual_bindings = d.unify(&d2, &Bindings::new());
         assert_some_value!(actual_bindings, expected_bindings);
     }
 
     #[test]
     fn test_unify_passes_when_match_with_new_variable_in_other() {
-        let d = Datum::from_sexp_str("(isa socrates man)").unwrap();
-        let d2 = Datum::from_sexp_str("(isa socrates ?x)").unwrap();
-        let expected_bindings: Bindings<Datum> = vec![("?x".to_string(), Datum::from_sexp_str("man").unwrap())].into_iter().collect();
-        let actual_bindings = d.unify(&d2, &Bindings::new());
+        let d = from_json!(Datum, {
+            "vec": [{"str": "isa"}, {"str": "socrates"}, {"var": "?x"}]
+        });
+        let d2 = from_json!(Datum, {
+            "vec": [{"str": "isa"}, {"str": "socrates"}, {"str": "man"}]
+        });
+        let expected_bindings = Bindings::new().set_binding(&"?x".to_string(), Datum::String("man".to_string()));
+        let actual_bindings = d2.unify(&d, &Bindings::new());
+        assert_some_value!(actual_bindings, expected_bindings);
+    }
+
+    #[test]
+    fn test_unify_passes_with_matching_vectors() {
+        let d = datum_json!(
+            {"vec": [{"vec": [{"str": "current-state"}, {"var": "?s1"}]},
+                     {"vec": [{"str": "time"}, {"var": "?t1"}]}]});
+        let d2 = datum_json!({"vec": [
+            {"vec":[{"str": "current-state"}, {"float": 0}]},
+            {"vec":[{"str": "time"}, {"float": 0}]},
+        ]});
+        let expected_bindings = Bindings::new().set_binding(&"?s1".to_string(), Datum::Float(0.0)).set_binding(&"?t1".to_string(), Datum::Float(0.0));
+        let actual_bindings = d2.unify(&d, &Bindings::new());
         assert_some_value!(actual_bindings, expected_bindings);
     }
 
     #[test]
     fn test_unify_passes_when_bindings_in_self_match() {
-        let d = Datum::from_sexp_str("(isa socrates ?x)").unwrap();
-        let d2 = Datum::from_sexp_str("(isa socrates man)").unwrap();
-        let bindings: Bindings<Datum> = vec![("?x".to_string(), Datum::from_sexp_str("man").unwrap())].into_iter().collect();
+        let d = from_json!(Datum, {
+            "vec": [{"str": "isa"}, {"str": "socrates"}, {"var": "?x"}]
+        });
+        let d2 = from_json!(Datum, {
+            "vec": [{"str": "isa"}, {"str": "socrates"}, {"str": "man"}]
+        });
+        let bindings = Bindings::new().set_binding(&"?x".to_string(), Datum::String("man".to_string()));
         let actual_bindings = d.unify(&d2, &bindings);
         assert_some_value!(actual_bindings, bindings);
     }
 
     #[test]
     fn test_unify_passes_when_bindings_in_other_match() {
-        let d = Datum::from_sexp_str("(isa socrates man)").unwrap();
-        let d2 = Datum::from_sexp_str("(isa socrates ?x)").unwrap();
-        let bindings: Bindings<Datum> = vec![("?x".to_string(), Datum::from_sexp_str("man").unwrap())].into_iter().collect();
-        let actual_bindings = d.unify(&d2, &bindings);
+        let d = from_json!(Datum, {
+            "vec": [{"str": "isa"}, {"str": "socrates"}, {"var": "?x"}]
+        });
+        let d2 = from_json!(Datum, {
+            "vec": [{"str": "isa"}, {"str": "socrates"}, {"str": "man"}]
+        });
+        let bindings = Bindings::new().set_binding(&"?x".to_string(), Datum::String("man".to_string()));
+        let actual_bindings = d2.unify(&d, &bindings);
         assert_some_value!(actual_bindings, bindings);
     }
 
     #[test]
     fn test_unify_fails_when_bindings_conflict() {
-        let d = Datum::from_sexp_str("(isa socrates ?x)").unwrap();
-        let d2 = Datum::from_sexp_str("(isa socrates man)").unwrap();
-        let bindings: Bindings<Datum> = vec![("?x".to_string(), Datum::from_sexp_str("mortal").unwrap())].into_iter().collect();
+        let d = from_json!(Datum, {
+            "vec": [{"str": "isa"}, {"str": "socrates"}, {"var": "?x"}]
+        });
+        let d2 = from_json!(Datum, {
+            "vec": [{"str": "isa"}, {"str": "socrates"}, {"str": "man"}]
+        });
+        let bindings = Bindings::new().set_binding(&"?x".to_string(), Datum::String("mortal".to_string()));
         let actual_bindings = d.unify(&d2, &bindings);
         assert_none!(actual_bindings);
     }
 
     #[test]
     fn test_unify_with_nesting() {
-        let d = Datum::from_sexp_str("(reward (value 5) (time 608356800) (type observation))").unwrap();
-        let d2 = Datum::from_sexp_str("(reward (value ?rv) (time ?t) (type observation))").unwrap();
-        let expected_bindings = vec![("?t".to_string(), Datum::from_sexp_str("608356800").unwrap()),
-                                     ("?rv".to_string(), Datum::from_sexp_str("5").unwrap())]
-            .into_iter()
-            .collect();
-        assert_eq!(Some(expected_bindings), d.unify(&d2, &Bindings::new()));
+        let d = from_json!(Datum, {
+            "vec": [
+                {"str": "reward"},
+                {"vec": [{"str": "value"}, {"int": 5}]},
+                {"vec": [{"str": "time"}, {"int": 608356800}]},
+                {"vec": [{"str": "type"}, {"str": "observation"}]}
+            ]
+        });
+        let d2 = from_json!(Datum, {
+            "vec": [
+                {"str": "reward"},
+                {"vec": [{"str": "value"}, {"var": "?rv"}]},
+                {"vec": [{"str": "time"}, {"var": "?t"}]},
+                {"vec": [{"str": "type"}, {"str": "observation"}]}
+            ]
+        });
+        let expected_bindings = Bindings::new()
+            .set_binding(&"?t".to_string(), Datum::Int(608356800))
+            .set_binding(&"?rv".to_string(), Datum::Int(5));
+        assert_eq!(d.unify(&d2, &Bindings::new()), Some(expected_bindings));
     }
 
     #[test]
     fn test_unify_fails_when_no_match() {
-        let d = Datum::from_sexp_str("(isa socrates mortal)").unwrap();
-        let d2 = Datum::from_sexp_str("(isa socrates man)").unwrap();
+        let d = from_json!(Datum, {
+            "vec": [{"str": "isa"}, {"str": "socrates"}, {"str": "mortal"}]
+        });
+        let d2 = from_json!(Datum, {
+            "vec": [{"str": "isa"}, {"str": "socrates"}, {"str": "man"}]
+        });
         let actual_bindings = d.unify(&d2, &Bindings::new());
         assert_none!(actual_bindings);
     }
 
     #[test]
     fn test_unify_fails_when_arg_counts_differ() {
-        let d = Datum::from_sexp_str("(isa socrates mortal)").unwrap();
-        let d2 = Datum::from_sexp_str("(isa socrates)").unwrap();
+        let d = from_json!(Datum, {
+            "vec": [{"str": "isa"}, {"str": "socrates"}, {"str": "mortal"}]
+        });
+        let d2 = from_json!(Datum, {
+            "vec": [{"str": "isa"}, {"str": "socrates"}]
+        });
         let actual_bindings = d.unify(&d2, &Bindings::new());
         assert_none!(actual_bindings);
     }

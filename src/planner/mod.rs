@@ -6,14 +6,15 @@ use std;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 
-#[cfg(test)]
-mod tests;
-
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum UnificationIndex {
+    #[serde(rename="init")]
     Init,
+    #[serde(rename="actor")]
     Actor(usize),
+    #[serde(rename="datum")]
     Datum(usize),
+    #[serde(rename="exhausted")]
     Exhausted,
 }
 
@@ -95,22 +96,29 @@ pub fn first_subgoal_to_increment(unification_indices: &Vec<UnificationIndex>) -
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Goal<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> {
+    #[serde(default)]
     pub bindings_at_creation: Bindings<T>,
-    pub constraints: Vec<Constraint<T>>,
-    pub parental_constraints: Vec<Constraint<T>>,
+    #[serde(default="Vec::new")]
+    pub constraints: Vec<Constraint>,
+    #[serde(default="Vec::new")]
+    pub parental_constraints: Vec<Constraint>,
     pub pattern: U,
+    #[serde(default="Vec::new")]
     pub subgoals: Vec<Goal<T, U, A>>,
+    #[serde(default)]
     pub unification_index: UnificationIndex,
+    #[serde(default)]
     _a_marker: PhantomData<A>,
+    #[serde(default)]
     _t_marker: PhantomData<T>,
 }
 
 impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
     pub fn new(pattern: U,
-               parental_constraints: Vec<Constraint<T>>,
-               constraints: Vec<Constraint<T>>,
+               parental_constraints: Vec<Constraint>,
+               constraints: Vec<Constraint>,
                bindings_at_creation: Bindings<T>,
                unification_index: UnificationIndex,
                subgoals: Vec<Self>)
@@ -127,7 +135,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
         }
     }
 
-    pub fn constraints(&self) -> Vec<&Constraint<T>> {
+    pub fn constraints(&self) -> Vec<&Constraint> {
         self.parental_constraints.iter().chain(self.constraints.iter()).collect()
     }
 
@@ -212,7 +220,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
 
     pub fn create_subgoals(r_pattern: &U,
                            rule: &A,
-                           parent_constraints: &Vec<&Constraint<T>>,
+                           parent_constraints: &Vec<&Constraint>,
                            data: &Vec<&U>,
                            rules: &Vec<&A>,
                            snowflake_prefix_id: usize,
@@ -449,3 +457,14 @@ impl<'a, T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Iterator for Planner<'a,
         None
     }
 }
+
+macro_rules! goal_json {
+    ($type: ty, $json: tt) => ({
+        use serde_json;
+        let g: $type = serde_json::from_value(json!($json)).expect("Expected json decoding");
+        g
+    })
+}
+
+#[cfg(test)]
+mod tests;
