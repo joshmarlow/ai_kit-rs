@@ -3,9 +3,28 @@ use std;
 use itertools::Itertools;
 use itertools::FoldWhile::{Continue, Done};
 use permutohedron;
-use sexp::{Atom, Sexp};
 
-use core;
+macro_rules! assert_some_value {
+($x:expr, $y:expr) => (match $x {
+    Some(val) => assert_eq!(val, $y),
+    None => panic!("Expected value but received 'None'"),
+    })
+}
+
+macro_rules! assert_none {
+($x:expr) => (match $x {
+    None => (),
+    Some(val) => panic!("Expected 'None' received {}", val),
+    })
+}
+
+macro_rules! from_json {
+    ($type: ty, $json: tt) => ({
+        use serde_json;
+        let x: $type = serde_json::from_value(json!($json)).expect("Expected json decoding");
+        x
+    })
+}
 
 /// Map across the iterator, terminating early if a mapping returns None
 pub fn filter_map_all<A, E>(iter: &mut Iterator<Item = E>, f: &Fn(E) -> Option<A>) -> Option<Vec<A>> {
@@ -32,57 +51,6 @@ pub fn fold_while_ok<A, I, E: std::fmt::Debug>(init_acc: A, iter: &mut Iterator<
         Ok(value) => Continue(Ok(value)),
         Err(err) => Done(Err(err)),
     })
-}
-
-pub fn to_sexp_helper(head: &str, rest: Sexp) -> Sexp {
-    /// A helper function for creating s-expressions of the form (head (<REST>))
-    Sexp::List(vec![Sexp::Atom(Atom::S(head.to_string())), rest])
-}
-
-pub fn from_sexp_helper<A>(expected_head: &str,
-                           s_exp: &Sexp,
-                           expected_arg_count: usize,
-                           f: &Fn(&Vec<Sexp>) -> std::result::Result<A, core::FromSexpError>)
-                           -> std::result::Result<A, core::FromSexpError> {
-    /// A helper function for parsing s-expressions of the form (head <REST>)
-    fn err<A>(msg: String) -> std::result::Result<A, core::FromSexpError> {
-        Err(core::FromSexpError { message: msg })
-    }
-    match *s_exp {
-        Sexp::List(ref elements) if elements.len() == 2 => {
-            match (&elements[0], &elements[1]) {
-                (&Sexp::Atom(Atom::S(ref head)), &Sexp::List(ref args)) if head.as_str() == expected_head && args.len() == expected_arg_count => {
-                    f(args)
-                }
-                (&Sexp::Atom(ref head), &Sexp::List(ref args)) => {
-                    err(format!("from_sexp_helper:: Expected head: '{}' with {} args, found '{}' with args {} ({:?})",
-                                expected_head,
-                                expected_arg_count,
-                                head,
-                                args.len(),
-                                args))
-                }
-                (&Sexp::Atom(_), &Sexp::Atom(_)) => {
-                    err(format!("from_sexp_helper: Expected head {}, expected (atom list), but received (atom atom)",
-                                expected_head))
-                }
-                (&Sexp::List(_), &Sexp::Atom(_)) => {
-                    err(format!("from_sexp_helper: Expected head {}, expected (atom list), but received (list atom)",
-                                expected_head))
-                }
-                (&Sexp::List(_), &Sexp::List(_)) => {
-                    err(format!("from_sexp_helper: Expected head {}, expected (atom list), but received (list list)",
-                                expected_head))
-                }
-            }
-        }
-        _ => {
-            err(format!("from_sexp_helper: Expected format '({} (ARG_0 .. ARG_{}))' but found '{}'",
-                        expected_head,
-                        expected_arg_count,
-                        s_exp))
-        }
-    }
 }
 
 /*

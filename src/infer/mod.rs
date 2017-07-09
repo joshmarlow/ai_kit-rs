@@ -1,56 +1,26 @@
+use serde_json;
 use std;
 use std::collections::{BTreeMap, BTreeSet};
 use std::collections::HashMap;
-use sexp::Sexp;
+use std::marker::PhantomData;
 
 use constraints::Constraint;
-use core::{Apply, Bindings, BindingsValue, FromSexpError, ToSexp, Unify};
+use core::{Apply, Bindings, BindingsValue, Unify};
 use pedigree::{Origin, Pedigree, RenderType};
 use utils;
 
-#[cfg(test)]
-mod tests;
-
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Rule<T: BindingsValue + ToSexp, U: Unify<T> + ToSexp> {
-    pub constraints: Vec<Constraint<T>>,
+pub struct Rule<T: BindingsValue, U: Unify<T>> {
+    #[serde(default)]
+    pub constraints: Vec<Constraint>,
+    #[serde(default = "Vec::default")]
     pub lhs: Vec<U>,
     pub rhs: U,
+    #[serde(default)]
+    _marker: PhantomData<T>,
 }
 
-impl<T: BindingsValue + ToSexp, U: Unify<T> + ToSexp> ToSexp for Rule<T, U> {
-    fn to_sexp(&self) -> Sexp {
-        let lhs_sexps: Vec<Sexp> = self.lhs.iter().map(|l| l.to_sexp()).collect();
-        let rhs_sexp = self.rhs.to_sexp();
-        utils::to_sexp_helper("defrule",
-                              Sexp::List(vec![Sexp::List(lhs_sexps),
-                                              rhs_sexp,
-                                              Sexp::List(self.constraints
-                                                  .iter()
-                                                  .map(|constraint| constraint.to_sexp())
-                                                  .collect())]))
-    }
-
-    fn from_sexp(s_exp: &Sexp) -> std::result::Result<Self, FromSexpError> {
-        utils::from_sexp_helper("defrule",
-                                s_exp,
-                                3,
-                                &|args| match (&args[0], &args[1], &args[2]) {
-                                    (&Sexp::List(ref lhs_sexps), &Sexp::List(_), &Sexp::List(ref constraint_sexps)) => {
-                                        Ok(Rule {
-                                            lhs: lhs_sexps.iter().map(|ref l_sexp| U::from_sexp(l_sexp).unwrap()).collect(),
-                                            rhs: U::from_sexp(&args[1]).unwrap(),
-                                            constraints: constraint_sexps.iter()
-                                                .map(|sexp| Constraint::from_sexp(sexp).unwrap())
-                                                .collect(),
-                                        })
-                                    }
-                                    _ => Err(FromSexpError { message: "Expected (atom list), but received (list atom)".to_string() }),
-                                })
-    }
-}
-
-impl<T: BindingsValue + ToSexp, U: Unify<T> + ToSexp> Apply<T, U> for Rule<T, U> {
+impl<T: BindingsValue, U: Unify<T>> Apply<T, U> for Rule<T, U> {
     fn arg_count(&self) -> usize {
         self.lhs.len()
     }
@@ -61,7 +31,7 @@ impl<T: BindingsValue + ToSexp, U: Unify<T> + ToSexp> Apply<T, U> for Rule<T, U>
             .and_then(|bindings| self.apply_bindings(&bindings).and_then(|rhs| Some((rhs, bindings))))
     }
 
-    fn constraints<'a>(&'a self) -> Vec<&'a Constraint<T>> {
+    fn constraints<'a>(&'a self) -> Vec<&'a Constraint> {
         self.constraints.iter().collect()
     }
 
@@ -95,17 +65,18 @@ impl<T: BindingsValue + ToSexp, U: Unify<T> + ToSexp> Apply<T, U> for Rule<T, U>
 
         let rhs = self.rhs.rename_variables(&renamed_variable);
         let lhs: Vec<U> = self.lhs.iter().map(|lhs| lhs.rename_variables(&renamed_variable)).collect();
-        let constraints: Vec<Constraint<T>> = self.constraints.iter().map(|constraint| constraint.rename_variables(&renamed_variable)).collect();
+        let constraints: Vec<Constraint> = self.constraints.iter().map(|constraint| constraint.rename_variables(&renamed_variable)).collect();
 
         Rule {
             constraints: constraints,
             lhs: lhs,
             rhs: rhs,
+            _marker: PhantomData,
         }
     }
 }
 
-impl<T: BindingsValue + ToSexp, U: Unify<T> + ToSexp> Rule<T, U> {
+impl<T: BindingsValue, U: Unify<T>> Rule<T, U> {
     pub fn unify(&self, facts: &Vec<&U>, bindings: &Bindings<T>) -> Option<Bindings<T>> {
         utils::fold_while_some(bindings.clone(),
                                &mut self.lhs.iter().zip(facts.iter()),
@@ -121,13 +92,13 @@ impl<T: BindingsValue + ToSexp, U: Unify<T> + ToSexp> Rule<T, U> {
     }
 }
 
-impl<T: BindingsValue + ToSexp, U: Unify<T> + ToSexp> std::fmt::Display for Rule<T, U> {
+impl<T: BindingsValue, U: Unify<T>> std::fmt::Display for Rule<T, U> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_sexp())
+        write!(f, "{}", serde_json::to_string(&self).unwrap())
     }
 }
 
-impl<T: BindingsValue + ToSexp, U: Unify<T> + ToSexp> Eq for Rule<T, U> {}
+impl<T: BindingsValue, U: Unify<T>> Eq for Rule<T, U> {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OriginCache {
@@ -149,7 +120,7 @@ impl OriginCache {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct InferenceEngine<'a, T: 'a + BindingsValue + ToSexp, U: 'a + Unify<T> + ToSexp> {
+pub struct InferenceEngine<'a, T: 'a + BindingsValue, U: 'a + Unify<T>> {
     pub rules: BTreeMap<&'a String, &'a Rule<T, U>>,
     pub facts: BTreeMap<&'a String, &'a U>,
     // Facts derived from this infernece process
@@ -161,7 +132,7 @@ pub struct InferenceEngine<'a, T: 'a + BindingsValue + ToSexp, U: 'a + Unify<T> 
     pub origin_cache: OriginCache,
 }
 
-impl<'a, T: BindingsValue + ToSexp, U: Unify<T> + ToSexp> InferenceEngine<'a, T, U> {
+impl<'a, T: BindingsValue, U: Unify<T>> InferenceEngine<'a, T, U> {
     pub fn new(prefix: String, rules: BTreeMap<&'a String, &'a Rule<T, U>>, facts: BTreeMap<&'a String, &'a U>) -> Self {
         InferenceEngine {
             rules: rules,
@@ -238,10 +209,10 @@ impl<'a, T: BindingsValue + ToSexp, U: Unify<T> + ToSexp> InferenceEngine<'a, T,
     }
 }
 
-pub fn chain_forward<T: BindingsValue + ToSexp, U: Unify<T> + ToSexp>(facts: Vec<(&String, &U)>,
-                                                                      rules: Vec<(&String, &Rule<T, U>)>,
-                                                                      origin_cache: &mut OriginCache)
-                                                                      -> Vec<(U, Bindings<T>, Origin)> {
+pub fn chain_forward<T: BindingsValue, U: Unify<T>>(facts: Vec<(&String, &U)>,
+                                                    rules: Vec<(&String, &Rule<T, U>)>,
+                                                    origin_cache: &mut OriginCache)
+                                                    -> Vec<(U, Bindings<T>, Origin)> {
     let mut new_facts: Vec<(U, Bindings<T>, Origin)> = Vec::new();
 
     for (ref rule_id, ref rule) in rules.into_iter() {
@@ -290,3 +261,6 @@ fn is_new_fact<T: BindingsValue, U: Unify<T>>(f: &U, facts: &Vec<(&String, &U)>)
     }
     return true;
 }
+
+#[cfg(test)]
+mod tests;

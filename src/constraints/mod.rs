@@ -1,9 +1,8 @@
+use serde_json;
 use std;
 use std::collections::HashMap;
-use std::marker::PhantomData;
-use sexp::{Atom, Sexp};
 
-use core::{Bindings, BindingsValue, FromSexpError, ToSexp};
+use core::{Bindings, BindingsValue};
 use utils;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -41,53 +40,44 @@ impl<T: BindingsValue> SolveResult<T> {
     }
 }
 
+impl<T: BindingsValue> std::fmt::Display for SolveResult<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", serde_json::to_string(&self).unwrap())
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub enum Constraint<T: BindingsValue> {
-    /// (constraint-set (?x CONSTANT))
+pub enum Constraint {
     /// ?x = CONSTANT
     #[serde(rename="set")]
     Set { variable: String, constant: f64 },
-    /// (constraint-sum (?x ?y ?z))
     /// ?x + ?y = ?z
     #[serde(rename="sum")]
     Sum {
         first: String,
         second: String,
         third: String,
-        _marker: PhantomData<T>,
     },
-    /// (constraint-mul (?x ?y ?z))
     /// ?x * ?y = ?z
     #[serde(rename="mul")]
     Mul {
         first: String,
         second: String,
         third: String,
-        _marker: PhantomData<T>,
     },
-    /// (constraint-greater-than (?x ?y))
     /// ?x > ?y
     #[serde(rename=">")]
-    GreaterThan {
-        left: String,
-        right: String,
-        _marker: PhantomData<T>,
-    },
-    /// (constraint-not-equal (?x ?y))
+    GreaterThan { left: String, right: String },
     /// ?x != ?y
     #[serde(rename="neq")]
-    NotEqual {
-        left: String,
-        right: String,
-        _marker: PhantomData<T>,
-    },
+    NotEqual { left: String, right: String },
 }
 
-impl<T: BindingsValue> Eq for Constraint<T> {}
+impl Eq for Constraint {}
 
-impl<T: BindingsValue> Constraint<T> {
+impl Constraint {
     /// Try to solve this constraint using the information in the bindings
-    pub fn solve(&self, bindings: &Bindings<T>) -> SolveResult<T> {
+    pub fn solve<T: BindingsValue>(&self, bindings: &Bindings<T>) -> SolveResult<T> {
         let to_float = |value: &T| -> f64 { value.to_float().expect(&format!("Expected to convert value {:?} to float", value).as_str()) };
         let (key, value) = match *self {
             Constraint::Set { ref variable, ref constant, .. } => {
@@ -147,7 +137,7 @@ impl<T: BindingsValue> Constraint<T> {
         SolveResult::Success(bindings.set_binding(key, value))
     }
 
-    pub fn solve_many(constraints: Vec<&Constraint<T>>, bindings: &Bindings<T>) -> SolveResult<T> {
+    pub fn solve_many<T: BindingsValue>(constraints: Vec<&Constraint>, bindings: &Bindings<T>) -> SolveResult<T> {
         // Aggregate all bindings from the constraints that we can solve
         let fold_result = utils::fold_while_some((Vec::new(), bindings.clone()),
                                                  &mut constraints.iter(),
@@ -191,7 +181,6 @@ impl<T: BindingsValue> Constraint<T> {
                     first: lookup(first),
                     second: lookup(second),
                     third: lookup(third),
-                    _marker: PhantomData,
                 }
             }
             Constraint::Mul { ref first, ref second, ref third, .. } => {
@@ -199,21 +188,18 @@ impl<T: BindingsValue> Constraint<T> {
                     first: lookup(first),
                     second: lookup(second),
                     third: lookup(third),
-                    _marker: PhantomData,
                 }
             }
             Constraint::GreaterThan { ref left, ref right, .. } => {
                 Constraint::GreaterThan {
                     left: lookup(left),
                     right: lookup(right),
-                    _marker: PhantomData,
                 }
             }
             Constraint::NotEqual { ref left, ref right, .. } => {
                 Constraint::GreaterThan {
                     left: lookup(left),
                     right: lookup(right),
-                    _marker: PhantomData,
                 }
             }
         }
@@ -230,7 +216,7 @@ impl<T: BindingsValue> Constraint<T> {
     }
 }
 
-impl<T: BindingsValue> PartialOrd for Constraint<T> {
+impl PartialOrd for Constraint {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         match (self, other) {
             (&Constraint::Set { ref variable, ref constant, .. }, &Constraint::Set { variable: ref variable2, constant: ref constant2, .. }) => {
@@ -280,128 +266,11 @@ impl<T: BindingsValue> PartialOrd for Constraint<T> {
     }
 }
 
-impl<T: BindingsValue> ToSexp for Constraint<T> {
-    fn to_sexp(&self) -> Sexp {
-        match *self {
-            Constraint::Set { ref variable, ref constant, .. } => {
-                utils::to_sexp_helper("constraint-set",
-                                      Sexp::List(vec![Sexp::Atom(Atom::S(variable.clone())), Sexp::Atom(Atom::F(constant.clone()))]))
-            }
-            Constraint::Sum { ref first, ref second, ref third, .. } => {
-                utils::to_sexp_helper("constraint-sum",
-                                      Sexp::List(vec![Sexp::Atom(Atom::S(first.clone())),
-                                                      Sexp::Atom(Atom::S(second.clone())),
-                                                      Sexp::Atom(Atom::S(third.clone()))]))
-            }
-            Constraint::Mul { ref first, ref second, ref third, .. } => {
-                utils::to_sexp_helper("constraint-mul",
-                                      Sexp::List(vec![Sexp::Atom(Atom::S(first.clone())),
-                                                      Sexp::Atom(Atom::S(second.clone())),
-                                                      Sexp::Atom(Atom::S(third.clone()))]))
-            }
-            Constraint::GreaterThan { ref left, ref right, .. } => {
-                utils::to_sexp_helper("constraint-greater-than",
-                                      Sexp::List(vec![Sexp::Atom(Atom::S(left.clone())), Sexp::Atom(Atom::S(right.clone()))]))
-            }
-            Constraint::NotEqual { ref left, ref right, .. } => {
-                utils::to_sexp_helper("constraint-neq",
-                                      Sexp::List(vec![Sexp::Atom(Atom::S(left.clone())), Sexp::Atom(Atom::S(right.clone()))]))
-            }
-        }
-    }
-
-    fn from_sexp(s_exp: &Sexp) -> std::result::Result<Self, FromSexpError> {
-        utils::from_sexp_helper("constraint-set",
-                                s_exp,
-                                2,
-                                &|args| match (&args[0], &args[1]) {
-                                    (&Sexp::Atom(Atom::S(ref variable)), &Sexp::Atom(Atom::F(ref constant))) => {
-                                        Ok(Constraint::Set {
-                                            variable: variable.clone(),
-                                            constant: constant.clone(),
-                                        })
-                                    }
-                                    (&Sexp::Atom(Atom::S(ref variable)), &Sexp::Atom(Atom::I(ref constant))) => {
-                                        Ok(Constraint::Set {
-                                            variable: variable.clone(),
-                                            constant: constant.clone() as f64,
-                                        })
-                                    }
-                                    _ => Err(FromSexpError { message: "Expected (atom list), but received (list atom)".to_string() }),
-                                })
-            .or_else(|_err| {
-                utils::from_sexp_helper("constraint-sum",
-                                        s_exp,
-                                        3,
-                                        &|args| match (&args[0], &args[1], &args[2]) {
-                                            (&Sexp::Atom(Atom::S(ref first)), &Sexp::Atom(Atom::S(ref second)), &Sexp::Atom(Atom::S(ref third))) => {
-                                                Ok(Constraint::Sum {
-                                                    first: first.clone(),
-                                                    second: second.clone(),
-                                                    third: third.clone(),
-                                                    _marker: PhantomData,
-                                                })
-                                            }
-                                            _ => Err(FromSexpError { message: "Expected (atom list), but received (list atom)".to_string() }),
-                                        })
-            })
-            .or_else(|_err| {
-                utils::from_sexp_helper("constraint-mul",
-                                        s_exp,
-                                        3,
-                                        &|args| match (&args[0], &args[1], &args[2]) {
-                                            (&Sexp::Atom(Atom::S(ref first)), &Sexp::Atom(Atom::S(ref second)), &Sexp::Atom(Atom::S(ref third))) => {
-                                                Ok(Constraint::Mul {
-                                                    first: first.clone(),
-                                                    second: second.clone(),
-                                                    third: third.clone(),
-                                                    _marker: PhantomData,
-                                                })
-                                            }
-                                            _ => Err(FromSexpError { message: "Expected (atom list), but received (list atom)".to_string() }),
-                                        })
-            })
-            .or_else(|_err| {
-                utils::from_sexp_helper("constraint-greater-than",
-                                        s_exp,
-                                        2,
-                                        &|args| match (&args[0], &args[1]) {
-                                            (&Sexp::Atom(Atom::S(ref left_var)), &Sexp::Atom(Atom::S(ref right_var))) => {
-                                                Ok(Constraint::GreaterThan {
-                                                    left: left_var.clone(),
-                                                    right: right_var.clone(),
-                                                    _marker: PhantomData,
-                                                })
-                                            }
-                                            _ => Err(FromSexpError { message: "Expected (atom list), but received (list atom)".to_string() }),
-                                        })
-            })
-            .or_else(|_err| {
-                utils::from_sexp_helper("constraint-neq",
-                                        s_exp,
-                                        2,
-                                        &|args| match (&args[0], &args[1]) {
-                                            (&Sexp::Atom(Atom::S(ref left_var)), &Sexp::Atom(Atom::S(ref right_var))) => {
-                                                Ok(Constraint::NotEqual {
-                                                    left: left_var.clone(),
-                                                    right: right_var.clone(),
-                                                    _marker: PhantomData,
-                                                })
-                                            }
-                                            _ => Err(FromSexpError { message: "Expected (atom list), but received (list atom)".to_string() }),
-                                        })
-            })
-            .or_else(|_err| {
-                Err(FromSexpError {
-                    message: format!("Constraint::from_sexp - sexp does not match any case - '{}'",
-                                     s_exp),
-                })
-            })
-    }
-}
-
-impl<T: BindingsValue> std::fmt::Display for Constraint<T> {
+impl std::fmt::Display for Constraint {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_sexp())
+        write!(f, "{}", serde_json::to_string(&self).unwrap())
     }
 }
+
+#[cfg(test)]
+mod tests;

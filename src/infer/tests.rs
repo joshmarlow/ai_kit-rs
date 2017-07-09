@@ -1,77 +1,67 @@
 use std::collections::BTreeMap;
-use sexp;
 
-use core::{Apply, Bindings, ToSexp};
+use core::{Apply, Bindings};
 use datum::Datum;
 use infer::{InferenceEngine, Rule};
 use pedigree::{InferenceChain, Origin};
 
-#[test]
-fn test_rule_to_sexp() {
-    let r = Rule {
-        lhs: vec![Datum::from_sexp_str("(has-feathers ?x)").unwrap()],
-        rhs: Datum::from_sexp_str("(bird ?x)").unwrap(),
-        constraints: Vec::new(),
-    };
-    let expected_sexp = sexp::parse("(defrule (((has-feathers ?x)) (bird ?x) ()))").ok().unwrap();
-    assert_eq!(r.to_sexp(), expected_sexp);
-}
-
-#[test]
-fn test_rule_from_sexp() {
-    let sexp = sexp::parse("(defrule (((has-feathers ?x)) (bird ?x) ()))").ok().unwrap();
-    let expected_r = Rule {
-        lhs: vec![Datum::from_sexp_str("(has-feathers ?x)").unwrap()],
-        rhs: Datum::from_sexp_str("(bird ?x)").unwrap(),
-        constraints: Vec::new(),
-    };
-    assert_eq!(Rule::from_sexp(&sexp).unwrap(), expected_r);
+fn setup() -> Rule<Datum, Datum> {
+    from_json!(Rule<Datum, Datum>, {
+      "lhs": [{"vec": [{"str": "x"}, {"var": "?x"}]}],
+      "rhs": {"vec": [{"str": "y"}, {"var": "?y"}]},
+      "constraints": [{"set": {"variable": "?diff", "constant": 25}},{"sum": {"first": "?x", "second": "?y", "third": "?diff"}}],
+    })
 }
 
 #[test]
 fn test_snowflake() {
-    let rule: Rule<Datum, Datum> = Rule::from_sexp_str("(defrule (((x ?x)) (y ?y) ((constraint-set (?diff 25.0)) (constraint-sum (?x ?y ?diff)))))")
-        .unwrap();
-    let expected_snowflake: Rule<Datum, Datum> = Rule::from_sexp_str("(defrule (((x ?x::test)) (y ?y::test) ((constraint-set \
-                                                                      (?diff::test 25.0)) (constraint-sum (?x::test ?y::test \
-                                                                      ?diff::test)))))")
-        .unwrap();
+    let rule: Rule<Datum, Datum> = setup();
+
+    let expected_snowflake = from_json!(Rule<Datum, Datum>, {
+      "lhs": [{"vec": [{"str": "x"}, {"var": "?x::test"}]}],
+      "rhs": {"vec": [{"str": "y"}, {"var": "?y::test"}]},
+      "constraints": [
+        {"set": {"variable": "?diff::test", "constant": 25}},
+        {"sum": {"first": "?x::test", "second": "?y::test", "third": "?diff::test"}}
+      ],
+    });
 
     assert_eq!(rule.snowflake("test".to_string()), expected_snowflake);
 }
 
 #[test]
 fn test_rule_application() {
-    let rule = Rule::from_sexp_str("(defrule (((x ?x)) (y ?y) ((constraint-set (?diff 25.0)) (constraint-sum (?x ?y ?diff)))))").unwrap();
-    let initial_datum = Datum::from_sexp_str("(x 10.0)").unwrap();
-    let expected_datum = Datum::from_sexp_str("(y 15.0)").unwrap();
-    let expected_bindings: Bindings<Datum> = vec![("?diff".to_string(), Datum::from_float(25.0)),
-                                                  ("?x".to_string(), Datum::from_float(10.0)),
-                                                  ("?y".to_string(), Datum::from_float(15.0))]
-        .into_iter()
-        .collect();
+    let rule: Rule<Datum, Datum> = setup();
+    let initial_datum = from_json!(Datum, {"vec": [{"str": "x"}, {"float": 10}]});
+    let expected_datum = from_json!(Datum, {"vec": [{"str": "y"}, {"float": 15}]});
+    let expected_bindings: Bindings<Datum> = Bindings::new()
+        .set_binding(&"?diff".to_string(), Datum::Float(25.0))
+        .set_binding(&"?x".to_string(), Datum::Float(10.0))
+        .set_binding(&"?y".to_string(), Datum::Float(15.0));
     assert_eq!(rule.apply(&vec![&initial_datum], &Bindings::new()),
                Some((expected_datum, expected_bindings)));
 }
 
 #[test]
 fn test_rule_application_with_no_antecedents() {
-    let rule: Rule<Datum, Datum> = Rule::from_sexp_str("(defrule (() (y 1) ()))").unwrap();
-    let expected_datum = Datum::from_sexp_str("(y 1)").unwrap();
+    let rule = from_json!(Rule<Datum, Datum>, {
+      "rhs": {"vec": [{"str": "y"}, {"float": 1}]},
+    });
+    let expected_datum = from_json!(Datum, {"vec": [{"str": "y"}, {"float": 1}]});
     let expected_bindings: Bindings<Datum> = Bindings::new();
-    assert_eq!(rule.apply(&vec![], &Bindings::new()),
+    assert_eq!(rule.apply(&Vec::new(), &Bindings::new()),
                Some((expected_datum, expected_bindings)));
 }
 
 #[test]
 fn test_rule_reverse_application() {
-    let rule = Rule::from_sexp_str("(defrule (((x ?x)) (y ?y) ((constraint-set (?sum 25.0)) (constraint-sum (?x ?y ?sum)))))").unwrap();
-    let expected_datum = Datum::from_sexp_str("(x 10.0)").unwrap();
-    let initial_datum = Datum::from_sexp_str("(y 15.0)").unwrap();
-    let expected_bindings: Bindings<Datum> =
-        vec![("?sum".to_string(), Datum::from_float(25.0)), ("?x".to_string(), Datum::from_float(10.0)), ("?y".to_string(), Datum::from_float(15.0))]
-            .into_iter()
-            .collect();
+    let rule: Rule<Datum, Datum> = setup();
+    let expected_datum = from_json!(Datum, {"vec": [{"str": "x"}, {"float": 10}]});
+    let initial_datum = from_json!(Datum, {"vec": [{"str": "y"}, {"float": 15}]});
+    let expected_bindings = Bindings::new()
+        .set_binding(&"?diff".to_string(), Datum::Float(25.0))
+        .set_binding(&"?x".to_string(), Datum::Float(10.0))
+        .set_binding(&"?y".to_string(), Datum::Float(15.0));
     assert_eq!(rule.r_apply(&initial_datum, &Bindings::new()),
                Some((vec![expected_datum], expected_bindings)));
 }
@@ -79,13 +69,16 @@ fn test_rule_reverse_application() {
 #[test]
 fn test_forward_chain() {
     let r_id = "rule-0".to_string();
-    let r = Rule::from_sexp_str("(defrule (((has-feathers ?x)) (bird ?x) ()))").unwrap();
+    let r = from_json!(Rule<Datum, Datum>, {
+      "lhs": [{"vec": [{"str": "has-features"}, {"var": "?x"}]}],
+      "rhs": {"vec": [{"str": "bird"}, {"var": "?x"}]},
+    });
     let rules: BTreeMap<&String, &Rule<Datum, Datum>> = vec![(&r_id, &r)]
         .into_iter()
         .collect();
 
     let f_id = "fact-0".to_string();
-    let f = Datum::from_sexp_str("(has-feathers bonnie)").unwrap();
+    let f = from_json!(Datum, {"vec": [{"str": "has-features"}, {"str": "bonnie"}]});
     let facts: BTreeMap<&String, &Datum> = vec![(&f_id, &f)]
         .into_iter()
         .collect();
@@ -93,8 +86,8 @@ fn test_forward_chain() {
     let mut engine = InferenceEngine::new("test".to_string(), rules, facts);
     let new_facts = engine.chain_forward();
 
-    let expected_new_fact = Datum::from_sexp_str("(bird bonnie)").unwrap();
-    let expected_bindings = Bindings::new().set_binding(&"?x".to_string(), Datum::from_string(&"bonnie".to_string()));
+    let expected_new_fact = from_json!(Datum, {"vec": [{"str": "bird"}, {"str": "bonnie"}]});
+    let expected_bindings = Bindings::new().set_binding(&"?x".to_string(), Datum::String("bonnie".to_string()));
 
     assert_eq!(new_facts.len(), 1);
     assert_eq!(new_facts,
@@ -108,17 +101,40 @@ fn test_forward_chain() {
 
 #[test]
 fn test_chain_until_match() {
-    let rules =
-        vec![Rule::from_sexp_str("(defrule (((current-value ?x)) (current-value ?y) ((constraint-set (?diff 1)) (constraint-sum (?x ?diff ?y)))))")
-                 .unwrap(),
-             Rule::from_sexp_str("(defrule (((current-value ?x)) (current-value ?y) ((constraint-set (?diff -1)) (constraint-sum (?x ?diff ?y)))))")
-                 .unwrap(),
-             Rule::from_sexp_str("(defrule (((current-value ?x)) (current-value ?y) ((constraint-set (?factor 2)) (constraint-mul (?x ?factor \
-                                  ?y)))))")
-                 .unwrap(),
-             Rule::from_sexp_str("(defrule (((current-value ?x)) (current-value ?y) ((constraint-set (?factor 0.5)) (constraint-mul (?x ?factor \
-                                  ?y)))))")
-                 .unwrap()];
+    let rules = from_json!(Vec<Rule<Datum, Datum>>, [
+      {
+        "lhs": [{"vec": [{"str": "current-value"}, {"var": "?x"}]}],
+        "rhs": {"vec": [{"str": "current-value"}, {"var": "?y"}]},
+        "constraints": [
+          {"set": {"variable": "?diff", "constant": 1}},
+          {"sum": {"first": "?x", "second": "?diff", "third": "?y"}}
+        ]
+      },
+      {
+        "lhs": [{"vec": [{"str": "current-value"}, {"var": "?x"}]}],
+        "rhs": {"vec": [{"str": "current-value"}, {"var": "?y"}]},
+        "constraints": [
+          {"set": {"variable": "?diff", "constant": -1}},
+          {"sum": {"first": "?x", "second": "?diff", "third": "?y"}}
+        ]
+      },
+      {
+        "lhs": [{"vec": [{"str": "current-value"}, {"var": "?x"}]}],
+        "rhs": {"vec": [{"str": "current-value"}, {"var": "?y"}]},
+        "constraints": [
+          {"set": {"variable": "?factor", "constant": 2}},
+          {"mul": {"first": "?x", "second": "?factor", "third": "?y"}}
+        ]
+      },
+      {
+        "lhs": [{"vec": [{"str": "current-value"}, {"var": "?x"}]}],
+        "rhs": {"vec": [{"str": "current-value"}, {"var": "?y"}]},
+        "constraints": [
+          {"set": {"variable": "?factor", "constant": 0.5}},
+          {"mul": {"first": "?x", "second": "?factor", "third": "?y"}}
+        ]
+      }
+    ]);
 
     let rule_ids = vec!["add_one".to_string(), "subtract_one".to_string(), "double".to_string(), "halve".to_string()];
 
@@ -128,12 +144,12 @@ fn test_chain_until_match() {
         .collect();
 
     let f_id = "fact-0".to_string();
-    let f = Datum::from_sexp_str("(current-value 0)").unwrap();
+    let f = from_json!(Datum, {"vec": [{"str": "current-value"}, {"float": 0}]});
     let facts: BTreeMap<&String, &Datum> = vec![(&f_id, &f)]
         .into_iter()
         .collect();
 
-    let goal = Datum::from_sexp_str("(current-value 4)").unwrap();
+    let goal = from_json!(Datum, {"vec": [{"str": "current-value"}, {"float": 4}]});
     let engine = InferenceEngine::new("test".to_string(), rules, facts);
     let (result, _engine) = engine.chain_until_match(4, &goal);
     assert_eq!(result.is_some(), true);
@@ -143,12 +159,24 @@ fn test_chain_until_match() {
 
 #[test]
 fn test_chain_until_match_updates_pedigree() {
-    let rules = vec![Rule::from_sexp_str("(defrule (((current-value ?x)) (current-value ?y) ((constraint-set (?diff 1)) \
-                                          (constraint-sum (?x ?diff ?y)))))")
-                         .unwrap(),
-                     Rule::from_sexp_str("(defrule (((current-value ?x)) (current-value ?y) ((constraint-set (?factor 2)) \
-                                          (constraint-mul (?x ?factor ?y)))))")
-                         .unwrap()];
+    let rules = from_json!(Vec<Rule<Datum, Datum>>, [
+      {
+        "lhs": [{"vec": [{"str": "current-value"}, {"var": "?x"}]}],
+        "rhs": {"vec": [{"str": "current-value"}, {"var": "?y"}]},
+        "constraints": [
+            {"set": {"variable": "?diff", "constant": 1}},
+            {"sum": {"first": "?x", "second": "?diff", "third": "?y"}}
+        ]
+      },
+      {
+        "lhs": [{"vec": [{"str": "current-value"}, {"var": "?x"}]}],
+        "rhs": {"vec": [{"str": "current-value"}, {"var": "?y"}]},
+        "constraints": [
+            {"set": {"variable": "?factor", "constant": 2}},
+            {"mul": {"first": "?x", "second": "?factor", "third": "?y"}}
+        ]
+      }
+    ]);
 
     let add_one_id = "add_one".to_string();
     let double_id = "double".to_string();
@@ -160,17 +188,20 @@ fn test_chain_until_match_updates_pedigree() {
         .collect();
 
     let f_id = "fact-0".to_string();
-    let f = Datum::from_sexp_str("(current-value 0)").unwrap();
+    let f = from_json!(Datum, {"vec": [{"str": "current-value"}, {"float": 0}]});
     let facts: BTreeMap<&String, &Datum> = vec![(&f_id, &f)]
         .into_iter()
         .collect();
 
-    let goal = Datum::from_sexp_str("(current-value 4)").unwrap();
+    let goal = from_json!(Datum, {"vec": [{"str": "current-value"}, {"float": 4}]});
     let engine = InferenceEngine::new("test".to_string(), rules, facts);
     let (result, engine) = engine.chain_until_match(4, &goal);
     assert_eq!(result.is_some(), true);
     let (target_fact, target_fact_id) = result.unwrap();
     assert_eq!(target_fact, goal);
+    println!("\n");
+    println!("Target fact: {}", target_fact);
+    println!("Goal       : {}", goal);
 
     let test_id_0 = "test-0".to_string();
     let test_0_origin = Origin {
@@ -197,5 +228,7 @@ fn test_chain_until_match_updates_pedigree() {
                        (vec![(double_id.clone(), None), (test_id_0.clone(), Some(test_0_origin.clone()))]),
                        (vec![(add_one_id.clone(), None), (f_id.clone(), None)])],
     };
+    println!("Expected: {}", expected_inference_chain);
+    println!("Actual:   {}", inference_chain);
     assert_eq!(inference_chain, expected_inference_chain);
 }
