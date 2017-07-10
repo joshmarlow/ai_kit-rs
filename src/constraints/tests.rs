@@ -3,11 +3,11 @@ use constraints::*;
 
 #[test]
 fn test_solve_sum_constraint_forward() {
-    let constraint: Constraint = Constraint::Sum {
+    let constraint: Constraint = Constraint::Numerical(NumericalConstraint::Sum {
         first: "?x".to_string(),
         second: "?y".to_string(),
         third: "?z".to_string(),
-    };
+    });
     let bindings: Bindings<Datum> =
         vec![("?x".to_string(), Datum::from_float(10.0)), ("?y".to_string(), Datum::from_float(5.0))].into_iter().collect();
     let expected_bindings: Bindings<Datum> =
@@ -20,11 +20,11 @@ fn test_solve_sum_constraint_forward() {
 
 #[test]
 fn test_solve_sum_constraint_backward() {
-    let constraint: Constraint = Constraint::Sum {
+    let constraint: Constraint = Constraint::Numerical(NumericalConstraint::Sum {
         first: "?x".to_string(),
         second: "?y".to_string(),
         third: "?z".to_string(),
-    };
+    });
     let bindings: Bindings<Datum> =
         vec![("?x".to_string(), Datum::from_float(10.0)), ("?z".to_string(), Datum::from_float(15.0))].into_iter().collect();
     let expected_bindings: Bindings<Datum> =
@@ -37,11 +37,11 @@ fn test_solve_sum_constraint_backward() {
 
 #[test]
 fn test_solve_mul_constraint_forward() {
-    let constraint: Constraint = Constraint::Mul {
+    let constraint: Constraint = Constraint::Numerical(NumericalConstraint::Mul {
         first: "?x".to_string(),
         second: "?y".to_string(),
         third: "?z".to_string(),
-    };
+    });
     let bindings: Bindings<Datum> =
         vec![("?x".to_string(), Datum::from_float(3.0)), ("?y".to_string(), Datum::from_float(5.0))].into_iter().collect();
     let expected_bindings: Bindings<Datum> =
@@ -54,11 +54,11 @@ fn test_solve_mul_constraint_forward() {
 
 #[test]
 fn test_solve_mul_constraint_backward() {
-    let constraint: Constraint = Constraint::Mul {
+    let constraint: Constraint = Constraint::Numerical(NumericalConstraint::Mul {
         first: "?x".to_string(),
         second: "?y".to_string(),
         third: "?z".to_string(),
-    };
+    });
     let bindings: Bindings<Datum> =
         vec![("?x".to_string(), Datum::from_float(3.0)), ("?z".to_string(), Datum::from_float(15.0))].into_iter().collect();
     let expected_bindings: Bindings<Datum> =
@@ -71,10 +71,10 @@ fn test_solve_mul_constraint_backward() {
 
 #[test]
 fn test_solve_greater_than_constraint_succeeds() {
-    let constraint: Constraint = Constraint::GreaterThan {
+    let constraint: Constraint = Constraint::Numerical(NumericalConstraint::GreaterThan {
         left: "?x".to_string(),
         right: "?y".to_string(),
-    };
+    });
     let bindings: Bindings<Datum> =
         vec![("?x".to_string(), Datum::from_float(15.0)), ("?y".to_string(), Datum::from_float(5.0))].into_iter().collect();
     assert_eq!(constraint.solve(&bindings), SolveResult::Success(bindings));
@@ -82,10 +82,10 @@ fn test_solve_greater_than_constraint_succeeds() {
 
 #[test]
 fn test_solve_greater_than_constraint_fails() {
-    let constraint: Constraint = Constraint::GreaterThan {
+    let constraint: Constraint = Constraint::Numerical(NumericalConstraint::GreaterThan {
         left: "?x".to_string(),
         right: "?y".to_string(),
-    };
+    });
     let bindings: Bindings<Datum> =
         vec![("?x".to_string(), Datum::from_float(5.0)), ("?y".to_string(), Datum::from_float(15.0))].into_iter().collect();
     assert_eq!(constraint.solve(&bindings), SolveResult::Conflict);
@@ -94,27 +94,32 @@ fn test_solve_greater_than_constraint_fails() {
 #[test]
 fn test_solve_multi_constraint() {
     let constraints = from_json!(Vec<Constraint>, [
-        {
+    {
+        "numerical": {
             "set": {
                 "variable": "?diff",
                 "constant": 5.0,
             },
         },
-        {
+    },
+    {
+        "numerical": {
             "sum": {
                 "first": "?x",
                 "second": "?y",
                 "third": "?diff",
             },
         },
-        {
+    },
+    {
+        "numerical": {
             "sum": {
                 "first": "?w",
                 "second": "?x",
                 "third": "?diff",
             },
         }
-    ]);
+    }]);
     let bindings: Bindings<Datum> = Bindings::new().set_binding(&"?w".to_string(), Datum::Float(5.0));
     let expected_bindings: Bindings<Datum> = Bindings::new()
         .set_binding(&"?diff".to_string(), Datum::Float(5.0))
@@ -130,27 +135,32 @@ fn test_solve_multi_constraint() {
 #[test]
 fn test_solve_multi_constraint_terminates_when_unsolvable() {
     let constraints = from_json!(Vec<Constraint>, [
-        {
+    {
+        "numerical": {
             "set": {
                 "variable": "?diff",
                 "constant": 5.0,
             },
         },
-        {
+    },
+    {
+        "numerical": {
             "sum": {
                 "first": "?z",
                 "second": "?y",
                 "third": "?diff",
             },
         },
-        {
+    },
+    {
+        "numerical": {
             "sum": {
                 "first": "?w",
                 "second": "?x",
                 "third": "?diff",
             },
         }
-    ]);
+    }]);
     let bindings: Bindings<Datum> = Bindings::new().set_binding(&"?w".to_string(), Datum::Float(5.0));
     let expected_bindings: Bindings<Datum> = Bindings::new()
         .set_binding(&"?diff".to_string(), Datum::Float(5.0))

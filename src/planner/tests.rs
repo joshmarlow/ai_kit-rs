@@ -37,9 +37,9 @@ mod planner_tests {
                        {"vec": [{"str": "time"}, {"var": "?t1"}]}]}],
             "rhs": {"vec": [{"vec": [{"str": "current-state"}, {"var": "?s2"}]},
                             {"vec": [{"str": "time"}, {"var": "?t2"}]}]},
-            "constraints": [{"set": {"variable": "?diff", "constant": 1}},
-                            {"sum": {"first": "?s1", "second": "?diff", "third": "?s2"}},
-                            {"sum": {"first": "?t1", "second": "?diff", "third": "?t2"}}]
+            "constraints": [{"numerical": {"set": {"variable": "?diff", "constant": 1}}},
+                            {"numerical": {"sum": {"first": "?s1", "second": "?diff", "third": "?s2"}}},
+                            {"numerical": {"sum": {"first": "?t1", "second": "?diff", "third": "?t2"}}}]
       });
         let physics_rule_2 = from_json!(Rule<Datum, Datum>, {
             "lhs": [
@@ -49,10 +49,10 @@ mod planner_tests {
                        {"vec": [{"str": "time"}, {"var": "?t1"}]}]}],
             "rhs": {"vec": [{"vec": [{"str": "current-state"}, {"var": "?s2"}]},
                             {"vec": [{"str": "time"}, {"var": "?t2"}]}]},
-            "constraints": [{"set": {"variable": "?diff", "constant": 1}},
-                            {"set": {"variable": "?diff2", "constant": 2}},
-                            {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
-                            {"sum": {"first": "?t1", "second": "?diff", "third": "?t2"}}]
+            "constraints": [{"numerical": {"set": {"variable": "?diff", "constant": 1}}},
+                            {"numerical": {"set": {"variable": "?diff2", "constant": 2}}},
+                            {"numerical": {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}}},
+                            {"numerical": {"sum": {"first": "?t1", "second": "?diff", "third": "?t2"}}}]
           });
         let interaction_model_add_1 = from_json!(Rule<Datum, Datum>, {
             "rhs": {"vec": [{"vec": [{"str": "action"}, {"int": 1}]},
@@ -140,10 +140,10 @@ mod planner_tests {
                     ]},
                     "unification_index": {"datum": 0},
                     "constraints": [
-                      {"set": {"variable": "?diff1", "constant": 1}},
-                      {"set": {"variable": "?diff2", "constant": 2}},
-                      {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
-                      {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}
+                      {"numerical": {"set": {"variable": "?diff1", "constant": 1}}},
+                      {"numerical": {"set": {"variable": "?diff2", "constant": 2}}},
+                      {"numerical": {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}}},
+                      {"numerical": {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}}
                     ]
                  },
                  {
@@ -153,10 +153,10 @@ mod planner_tests {
                     ]},
                     "unification_index": {"actor": 1},
                     "constraints": [
-                      {"set": {"variable": "?diff1", "constant": 1}},
-                      {"set": {"variable": "?diff2", "constant": 2}},
-                      {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
-                      {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}
+                      {"numerical": {"set": {"variable": "?diff1", "constant": 1}}},
+                      {"numerical": {"set": {"variable": "?diff2", "constant": 2}}},
+                      {"numerical": {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}}},
+                      {"numerical": {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}}
                     ]
                  }
             ]);
@@ -360,10 +360,10 @@ mod planner_tests {
               },
               "unification_index": {"actor": 0},
               "constraints": [
-                {"set": {"variable": "?diff1", "constant": 1.0}},
-                {"set": {"variable": "?diff2", "constant": 2.0}},
-                {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
-                {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                {"numerical": {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}}},
+                {"numerical": {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}},
               ],
               "subgoals": [
                 {
@@ -375,10 +375,10 @@ mod planner_tests {
                     },
                     "unification_index": {"datum": 0},
                     "parental_constraints": [
-                        {"set": {"variable": "?diff1", "constant": 1.0}},
-                        {"set": {"variable": "?diff2", "constant": 2.0}},
-                        {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
-                        {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                        {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                        {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                        {"numerical": {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}}},
+                        {"numerical": {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}},
                      ],
                 },
                 {
@@ -390,10 +390,10 @@ mod planner_tests {
                     },
                     "unification_index": {"actor": 1},
                     "parental_constraints": [
-                        {"set": {"variable": "?diff1", "constant": 1.0}},
-                        {"set": {"variable": "?diff2", "constant": 2.0}},
-                        {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
-                        {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                        {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                        {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                        {"numerical": {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}}},
+                        {"numerical": {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}},
                      ]
                 }
               ]
@@ -429,10 +429,10 @@ mod planner_tests {
               },
               "unification_index": {"actor": 0},
               "constraints": [
-                {"set": {"variable": "?diff1", "constant": 1.0}},
-                {"set": {"variable": "?diff2", "constant": 2.0}},
-                {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}},
-                {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}},
+                {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                {"numerical": {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}}},
+                {"numerical": {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}}},
               ],
               "subgoals": [
                 {
@@ -444,16 +444,16 @@ mod planner_tests {
                   },
                   "unification_index": {"actor": 0},
                   "parental_constraints": [
-                      {"set": {"variable": "?diff1", "constant": 1.0}},
-                      {"set": {"variable": "?diff2", "constant": 2.0}},
-                      {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}},
-                      {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}},
+                      {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                      {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                      {"numerical": {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}}},
+                      {"numerical": {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}}},
                    ],
                   "constraints": [
-                    {"set": {"variable": "?diff1", "constant": 1.0}},
-                    {"set": {"variable": "?diff2", "constant": 2.0}},
-                    {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
-                    {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                    {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                    {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                    {"numerical": {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}}},
+                    {"numerical": {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}},
                   ],
                   "subgoals": [
                     {
@@ -465,14 +465,14 @@ mod planner_tests {
                         },
                         "unification_index": {"datum": 0},
                         "parental_constraints": [
-                            {"set": {"variable": "?diff1", "constant": 1.0}},
-                            {"set": {"variable": "?diff2", "constant": 2.0}},
-                            {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}},
-                            {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}},
-                            {"set": {"variable": "?diff1", "constant": 1.0}},
-                            {"set": {"variable": "?diff2", "constant": 2.0}},
-                            {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
-                            {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                            {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                            {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                            {"numerical": {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}}},
+                            {"numerical": {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}}},
+                            {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                            {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                            {"numerical": {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}}},
+                            {"numerical": {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}},
                          ],
                     },
                     {
@@ -484,14 +484,14 @@ mod planner_tests {
                         },
                         "unification_index": {"actor": 1},
                         "parental_constraints": [
-                            {"set": {"variable": "?diff1", "constant": 1.0}},
-                            {"set": {"variable": "?diff2", "constant": 2.0}},
-                            {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}},
-                            {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}},
-                            {"set": {"variable": "?diff1", "constant": 1.0}},
-                            {"set": {"variable": "?diff2", "constant": 2.0}},
-                            {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
-                            {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                            {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                            {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                            {"numerical": {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}}},
+                            {"numerical": {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}}},
+                            {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                            {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                            {"numerical": {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}}},
+                            {"numerical": {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}},
                          ]
                     }
                   ]
@@ -505,10 +505,10 @@ mod planner_tests {
                     },
                     "unification_index": {"actor": 1},
                     "parental_constraints": [
-                        {"set": {"variable": "?diff1", "constant": 1.0}},
-                        {"set": {"variable": "?diff2", "constant": 2.0}},
-                        {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}},
-                        {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}},
+                        {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                        {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                        {"numerical": {"sum": {"first": "?s2", "second": "?diff2", "third": "?s3"}}},
+                        {"numerical": {"sum": {"first": "?t2", "second": "?diff1", "third": "?t3"}}},
                      ]
                 }
               ]
@@ -546,10 +546,10 @@ mod planner_tests {
                 ]
               },
               "constraints": [
-                {"set": {"variable": "?diff1", "constant": 1.0}},
-                {"set": {"variable": "?diff2", "constant": 2.0}},
-                {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
-                {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                {"numerical": {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}}},
+                {"numerical": {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}},
               ],
               "unification_index": {"actor": 0},
               "subgoals": [
@@ -561,16 +561,16 @@ mod planner_tests {
                       ],
                     },
                     "parental_constraints": [
-                        {"set": {"variable": "?diff1", "constant": 1.0}},
-                        {"set": {"variable": "?diff2", "constant": 2.0}},
-                        {"sum": {"first": "?s0", "second": "?diff2", "third": "?s1"}},
-                        {"sum": {"first": "?t0", "second": "?diff1", "third": "?t1"}},
+                        {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                        {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                        {"numerical": {"sum": {"first": "?s0", "second": "?diff2", "third": "?s1"}}},
+                        {"numerical": {"sum": {"first": "?t0", "second": "?diff1", "third": "?t1"}}},
                      ],
                     "constraints": [
-                        {"set": {"variable": "?diff1", "constant": 1.0}},
-                        {"set": {"variable": "?diff2", "constant": 2.0}},
-                        {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
-                        {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                        {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                        {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                        {"numerical": {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}}},
+                        {"numerical": {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}},
                      ],
                 },
                 {
@@ -581,16 +581,16 @@ mod planner_tests {
                       ],
                     },
                     "parental_constraints": [
-                        {"set": {"variable": "?diff1", "constant": 1.0}},
-                        {"set": {"variable": "?diff2", "constant": 2.0}},
-                        {"sum": {"first": "?s0", "second": "?diff2", "third": "?s1"}},
-                        {"sum": {"first": "?t0", "second": "?diff1", "third": "?t1"}},
+                        {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                        {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                        {"numerical": {"sum": {"first": "?s0", "second": "?diff2", "third": "?s1"}}},
+                        {"numerical": {"sum": {"first": "?t0", "second": "?diff1", "third": "?t1"}}},
                      ],
                      "constraints": [
-                        {"set": {"variable": "?diff1", "constant": 1.0}},
-                        {"set": {"variable": "?diff2", "constant": 2.0}},
-                        {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}},
-                        {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}},
+                        {"numerical": {"set": {"variable": "?diff1", "constant": 1.0}}},
+                        {"numerical": {"set": {"variable": "?diff2", "constant": 2.0}}},
+                        {"numerical": {"sum": {"first": "?s1", "second": "?diff2", "third": "?s2"}}},
+                        {"numerical": {"sum": {"first": "?t1", "second": "?diff1", "third": "?t2"}}},
                      ]
                 }
               ]
@@ -763,15 +763,19 @@ mod planner_tests {
                 "unification_index": {"datum": 0},
                 "constraints": [
                   {
-                    "set": {
-                      "variable": "?min_time",
-                      "constant": 2,
+                    "numerical": {
+                      "set": {
+                        "variable": "?min_time",
+                        "constant": 2,
+                      },
                     },
                   },
                   {
-                    ">": {
-                      "left": "?t2",
-                      "right": "?min_time",
+                    "numerical": {
+                      ">": {
+                        "left": "?t2",
+                        "right": "?min_time",
+                      }
                     }
                   }
                 ]

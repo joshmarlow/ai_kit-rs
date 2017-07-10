@@ -9,7 +9,10 @@ fn setup() -> Rule<Datum, Datum> {
     from_json!(Rule<Datum, Datum>, {
       "lhs": [{"vec": [{"str": "x"}, {"var": "?x"}]}],
       "rhs": {"vec": [{"str": "y"}, {"var": "?y"}]},
-      "constraints": [{"set": {"variable": "?diff", "constant": 25}},{"sum": {"first": "?x", "second": "?y", "third": "?diff"}}],
+      "constraints": [
+        {"numerical": {"set": {"variable": "?diff", "constant": 25}}},
+        {"numerical": {"sum": {"first": "?x", "second": "?y", "third": "?diff"}}}
+      ],
     })
 }
 
@@ -21,8 +24,8 @@ fn test_snowflake() {
       "lhs": [{"vec": [{"str": "x"}, {"var": "?x::test"}]}],
       "rhs": {"vec": [{"str": "y"}, {"var": "?y::test"}]},
       "constraints": [
-        {"set": {"variable": "?diff::test", "constant": 25}},
-        {"sum": {"first": "?x::test", "second": "?y::test", "third": "?diff::test"}}
+        {"numerical": {"set": {"variable": "?diff::test", "constant": 25}}},
+        {"numerical": {"sum": {"first": "?x::test", "second": "?y::test", "third": "?diff::test"}}}
       ],
     });
 
@@ -106,32 +109,32 @@ fn test_chain_until_match() {
         "lhs": [{"vec": [{"str": "current-value"}, {"var": "?x"}]}],
         "rhs": {"vec": [{"str": "current-value"}, {"var": "?y"}]},
         "constraints": [
-          {"set": {"variable": "?diff", "constant": 1}},
-          {"sum": {"first": "?x", "second": "?diff", "third": "?y"}}
+          {"numerical": {"set": {"variable": "?diff", "constant": 1}}},
+          {"numerical": {"sum": {"first": "?x", "second": "?diff", "third": "?y"}}}
         ]
       },
       {
         "lhs": [{"vec": [{"str": "current-value"}, {"var": "?x"}]}],
         "rhs": {"vec": [{"str": "current-value"}, {"var": "?y"}]},
         "constraints": [
-          {"set": {"variable": "?diff", "constant": -1}},
-          {"sum": {"first": "?x", "second": "?diff", "third": "?y"}}
+          {"numerical": {"set": {"variable": "?diff", "constant": -1}}},
+          {"numerical": {"sum": {"first": "?x", "second": "?diff", "third": "?y"}}}
         ]
       },
       {
         "lhs": [{"vec": [{"str": "current-value"}, {"var": "?x"}]}],
         "rhs": {"vec": [{"str": "current-value"}, {"var": "?y"}]},
         "constraints": [
-          {"set": {"variable": "?factor", "constant": 2}},
-          {"mul": {"first": "?x", "second": "?factor", "third": "?y"}}
+          {"numerical": {"set": {"variable": "?factor", "constant": 2}}},
+          {"numerical": {"mul": {"first": "?x", "second": "?factor", "third": "?y"}}}
         ]
       },
       {
         "lhs": [{"vec": [{"str": "current-value"}, {"var": "?x"}]}],
         "rhs": {"vec": [{"str": "current-value"}, {"var": "?y"}]},
         "constraints": [
-          {"set": {"variable": "?factor", "constant": 0.5}},
-          {"mul": {"first": "?x", "second": "?factor", "third": "?y"}}
+          {"numerical": {"set": {"variable": "?factor", "constant": 0.5}}},
+          {"numerical": {"mul": {"first": "?x", "second": "?factor", "third": "?y"}}}
         ]
       }
     ]);
@@ -164,16 +167,16 @@ fn test_chain_until_match_updates_pedigree() {
         "lhs": [{"vec": [{"str": "current-value"}, {"var": "?x"}]}],
         "rhs": {"vec": [{"str": "current-value"}, {"var": "?y"}]},
         "constraints": [
-            {"set": {"variable": "?diff", "constant": 1}},
-            {"sum": {"first": "?x", "second": "?diff", "third": "?y"}}
+            {"numerical": {"set": {"variable": "?diff", "constant": 1}}},
+            {"numerical": {"sum": {"first": "?x", "second": "?diff", "third": "?y"}}}
         ]
       },
       {
         "lhs": [{"vec": [{"str": "current-value"}, {"var": "?x"}]}],
         "rhs": {"vec": [{"str": "current-value"}, {"var": "?y"}]},
         "constraints": [
-            {"set": {"variable": "?factor", "constant": 2}},
-            {"mul": {"first": "?x", "second": "?factor", "third": "?y"}}
+            {"numerical": {"set": {"variable": "?factor", "constant": 2}}},
+            {"numerical": {"mul": {"first": "?x", "second": "?factor", "third": "?y"}}}
         ]
       }
     ]);
@@ -228,7 +231,5 @@ fn test_chain_until_match_updates_pedigree() {
                        (vec![(double_id.clone(), None), (test_id_0.clone(), Some(test_0_origin.clone()))]),
                        (vec![(add_one_id.clone(), None), (f_id.clone(), None)])],
     };
-    println!("Expected: {}", expected_inference_chain);
-    println!("Actual:   {}", inference_chain);
     assert_eq!(inference_chain, expected_inference_chain);
 }
