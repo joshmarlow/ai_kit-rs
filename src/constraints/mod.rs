@@ -133,26 +133,6 @@ impl std::fmt::Display for NumericalConstraint {
     }
 }
 
-/*#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub enum StringConstraint {
-    #[serde(rename="set")]
-    Set {...},
-    #[serde(rename="eq")]
-    Eq {...},
-    #[serde(rename="neq")]
-    Neq {...},
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub enum DateTimeConstraint {
-    #[serde(rename="set")]
-    Set {...},
-    #[serde(rename=">")]
-    GreaterThan {...},
-    #[serde(rename="sum")]
-    Sum {...},
-}*/
-
 impl NumericalConstraint {
     /// Try to solve this constraint using the information in the bindings
     pub fn solve<T: BindingsValue>(&self, bindings: &Bindings<T>) -> SolveResult<T> {
@@ -263,6 +243,26 @@ impl NumericalConstraint {
         }
     }
 }
+
+/*#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub enum StringConstraint {
+    #[serde(rename="set")]
+    Set {...},
+    #[serde(rename="eq")]
+    Eq {...},
+    #[serde(rename="neq")]
+    Neq {...},
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub enum DateTimeConstraint {
+    #[serde(rename="set")]
+    Set {...},
+    #[serde(rename=">")]
+    GreaterThan {...},
+    #[serde(rename="sum")]
+    Sum {...},
+}*/
 
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub enum Constraint {
