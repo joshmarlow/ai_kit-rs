@@ -31,26 +31,17 @@ pub enum Datum {
 }
 
 impl Datum {
-    pub fn string(s: &String) -> Datum {
-        Datum::String(s.clone())
-    }
-
-    pub fn int(i: i64) -> Datum {
-        Datum::Int(i)
-    }
-
-    pub fn float(f: f64) -> Datum {
-        Datum::Float(f)
-    }
-
-    pub fn variable(s: String) -> Datum {
-        Datum::Variable(s)
-    }
-
     pub fn is_compound(&self) -> bool {
         match *self {
             Datum::Compound { head: ref _head, args: ref _args } => true,
             _ => false,
+        }
+    }
+
+    pub fn head<'a>(&'a self) -> Option<&'a Box<Datum>> {
+        match *self {
+            Datum::Compound { ref head, args: ref _args } => Some(head),
+            _ => None,
         }
     }
 
@@ -79,13 +70,6 @@ impl Datum {
     pub fn to_variable(&self) -> Option<String> {
         match *self {
             Datum::Variable(ref value) => Some(value.clone()),
-            _ => None,
-        }
-    }
-
-    pub fn head<'a>(&'a self) -> Option<&'a Box<Datum>> {
-        match *self {
-            Datum::Compound { ref head, args: ref _args } => Some(head),
             _ => None,
         }
     }
@@ -163,7 +147,7 @@ impl ConstraintValue for Datum {
         self.to_float()
     }
     fn float(c: f64) -> Self {
-        Datum::float(c)
+        Datum::Float(c)
     }
 }
 

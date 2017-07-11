@@ -835,7 +835,7 @@ mod planner_tests {
             let (final_goal, bindings) = result.unwrap();
 
             assert_eq!(bindings.get_binding(&"?t2".to_string()),
-                       Some(Datum::float(3.0)));
+                       Some(Datum::Float(3.0)));
 
             assert_goal_spines_match(&final_goal.apply_bindings(&bindings).unwrap(),
                                      &expected_final_goal);

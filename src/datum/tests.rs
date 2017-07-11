@@ -19,7 +19,7 @@ mod tests {
         let d = from_json!(Datum, {
             "vec": [{"str": "action"}, {"int": 1}, {"var": "?::t1"}]
         });
-        let bindings = Bindings::new().set_binding(&"?::t1".to_string(), Datum::float(2.0));
+        let bindings = Bindings::new().set_binding(&"?::t1".to_string(), Datum::Float(2.0));
         assert_eq!(d.unify(&d, &bindings), Some(bindings));
     }
 
