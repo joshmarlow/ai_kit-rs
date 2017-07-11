@@ -8,10 +8,9 @@ fn test_solve_sum_constraint_forward() {
         second: "?y".to_string(),
         third: "?z".to_string(),
     });
-    let bindings: Bindings<Datum> =
-        vec![("?x".to_string(), Datum::from_float(10.0)), ("?y".to_string(), Datum::from_float(5.0))].into_iter().collect();
+    let bindings: Bindings<Datum> = vec![("?x".to_string(), Datum::float(10.0)), ("?y".to_string(), Datum::float(5.0))].into_iter().collect();
     let expected_bindings: Bindings<Datum> =
-        vec![("?x".to_string(), Datum::from_float(10.0)), ("?y".to_string(), Datum::from_float(5.0)), ("?z".to_string(), Datum::from_float(15.0))]
+        vec![("?x".to_string(), Datum::float(10.0)), ("?y".to_string(), Datum::float(5.0)), ("?z".to_string(), Datum::float(15.0))]
             .into_iter()
             .collect();
     assert_eq!(constraint.solve(&bindings),
@@ -25,10 +24,9 @@ fn test_solve_sum_constraint_backward() {
         second: "?y".to_string(),
         third: "?z".to_string(),
     });
-    let bindings: Bindings<Datum> =
-        vec![("?x".to_string(), Datum::from_float(10.0)), ("?z".to_string(), Datum::from_float(15.0))].into_iter().collect();
+    let bindings: Bindings<Datum> = vec![("?x".to_string(), Datum::float(10.0)), ("?z".to_string(), Datum::float(15.0))].into_iter().collect();
     let expected_bindings: Bindings<Datum> =
-        vec![("?x".to_string(), Datum::from_float(10.0)), ("?y".to_string(), Datum::from_float(5.0)), ("?z".to_string(), Datum::from_float(15.0))]
+        vec![("?x".to_string(), Datum::float(10.0)), ("?y".to_string(), Datum::float(5.0)), ("?z".to_string(), Datum::float(15.0))]
             .into_iter()
             .collect();
     assert_eq!(constraint.solve(&bindings),
@@ -42,10 +40,9 @@ fn test_solve_mul_constraint_forward() {
         second: "?y".to_string(),
         third: "?z".to_string(),
     });
-    let bindings: Bindings<Datum> =
-        vec![("?x".to_string(), Datum::from_float(3.0)), ("?y".to_string(), Datum::from_float(5.0))].into_iter().collect();
+    let bindings: Bindings<Datum> = vec![("?x".to_string(), Datum::float(3.0)), ("?y".to_string(), Datum::float(5.0))].into_iter().collect();
     let expected_bindings: Bindings<Datum> =
-        vec![("?x".to_string(), Datum::from_float(3.0)), ("?y".to_string(), Datum::from_float(5.0)), ("?z".to_string(), Datum::from_float(15.0))]
+        vec![("?x".to_string(), Datum::float(3.0)), ("?y".to_string(), Datum::float(5.0)), ("?z".to_string(), Datum::float(15.0))]
             .into_iter()
             .collect();
     assert_eq!(constraint.solve(&bindings),
@@ -59,10 +56,9 @@ fn test_solve_mul_constraint_backward() {
         second: "?y".to_string(),
         third: "?z".to_string(),
     });
-    let bindings: Bindings<Datum> =
-        vec![("?x".to_string(), Datum::from_float(3.0)), ("?z".to_string(), Datum::from_float(15.0))].into_iter().collect();
+    let bindings: Bindings<Datum> = vec![("?x".to_string(), Datum::float(3.0)), ("?z".to_string(), Datum::float(15.0))].into_iter().collect();
     let expected_bindings: Bindings<Datum> =
-        vec![("?x".to_string(), Datum::from_float(3.0)), ("?y".to_string(), Datum::from_float(5.0)), ("?z".to_string(), Datum::from_float(15.0))]
+        vec![("?x".to_string(), Datum::float(3.0)), ("?y".to_string(), Datum::float(5.0)), ("?z".to_string(), Datum::float(15.0))]
             .into_iter()
             .collect();
     assert_eq!(constraint.solve(&bindings),
@@ -75,8 +71,7 @@ fn test_solve_greater_than_constraint_succeeds() {
         left: "?x".to_string(),
         right: "?y".to_string(),
     });
-    let bindings: Bindings<Datum> =
-        vec![("?x".to_string(), Datum::from_float(15.0)), ("?y".to_string(), Datum::from_float(5.0))].into_iter().collect();
+    let bindings: Bindings<Datum> = vec![("?x".to_string(), Datum::float(15.0)), ("?y".to_string(), Datum::float(5.0))].into_iter().collect();
     assert_eq!(constraint.solve(&bindings), SolveResult::Success(bindings));
 }
 
@@ -86,8 +81,7 @@ fn test_solve_greater_than_constraint_fails() {
         left: "?x".to_string(),
         right: "?y".to_string(),
     });
-    let bindings: Bindings<Datum> =
-        vec![("?x".to_string(), Datum::from_float(5.0)), ("?y".to_string(), Datum::from_float(15.0))].into_iter().collect();
+    let bindings: Bindings<Datum> = vec![("?x".to_string(), Datum::float(5.0)), ("?y".to_string(), Datum::float(15.0))].into_iter().collect();
     assert_eq!(constraint.solve(&bindings), SolveResult::Conflict);
 }
 
