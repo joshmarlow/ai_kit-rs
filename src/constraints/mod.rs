@@ -1,12 +1,20 @@
 use serde_json;
 use std;
 use std::collections::HashMap;
+use std::ops::{Add, Div, Mul, Sub};
 
 use core::{Bindings, BindingsValue};
 use utils;
 
+pub trait ConstraintValue: BindingsValue {
+    /// Constraint a ConstraintValue from a float
+    fn float(f64) -> Self;
+    /// Attempt to convert this value to a float
+    fn to_float(&self) -> Option<f64>;
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub enum SolveResult<T: BindingsValue> {
+pub enum SolveResult<T: ConstraintValue> {
     /// A conflict was found, no solution possible
     Conflict,
     /// Incomplete solution; could not solve all constraints
@@ -15,7 +23,7 @@ pub enum SolveResult<T: BindingsValue> {
     Success(Bindings<T>),
 }
 
-impl<T: BindingsValue> SolveResult<T> {
+impl<T: ConstraintValue> SolveResult<T> {
     pub fn ok(&self) -> Option<Bindings<T>> {
         match *self {
             SolveResult::Success(ref bindings) => Some(bindings.clone()),
@@ -40,7 +48,7 @@ impl<T: BindingsValue> SolveResult<T> {
     }
 }
 
-impl<T: BindingsValue> std::fmt::Display for SolveResult<T> {
+impl<T: ConstraintValue> std::fmt::Display for SolveResult<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", serde_json::to_string(&self).unwrap())
     }
@@ -135,24 +143,33 @@ impl std::fmt::Display for NumericalConstraint {
 
 impl NumericalConstraint {
     /// Try to solve this constraint using the information in the bindings
-    pub fn solve<T: BindingsValue>(&self, bindings: &Bindings<T>) -> SolveResult<T> {
-        let to_float = |value: &T| -> f64 { value.to_float().expect(&format!("Expected to convert value {:?} to float", value).as_str()) };
+    pub fn solve<T: ConstraintValue>(&self, bindings: &Bindings<T>) -> SolveResult<T> {
+        let apply_op =
+            |x: &T, y: &T, op: &Fn(f64, f64) -> f64| -> Option<T> { x.to_float().and_then(|x| y.to_float().and_then(|y| Some(T::float(op(x, y))))) };
+        macro_rules! apply_op_or_return {
+            ($x: ident, $y: ident, $z: ident, $op: expr) => ({
+                if let Some(value) = apply_op($x, $y, &$op) {
+                    ($z, value)
+                } else {
+                    return SolveResult::Conflict
+                }
+            })
+        }
         let (key, value) = match *self {
             NumericalConstraint::Set { ref variable, ref constant, .. } => {
                 match bindings.get_binding(variable) {
-                    None => (variable, T::from_float(constant.clone())),
-                    Some(ref value) if to_float(value) == *constant => (variable, value.clone()),
+                    None => (variable, T::float(constant.clone())),
+                    Some(ref value) if value.to_float() == Some(*constant) => (variable, value.clone()),
                     Some(_) => return SolveResult::Conflict,
                 }
             }
             NumericalConstraint::Sum { ref first, ref second, ref third, .. } => {
                 match (bindings.get_binding(first), bindings.get_binding(second), bindings.get_binding(third)) {
-                    (Some(ref value), Some(ref value2), None) => (third, T::from_float(to_float(value) + to_float(value2))),
-                    (Some(ref value), None, Some(ref value3)) => (second, T::from_float(to_float(value3) - to_float(value))),
-                    (None, Some(ref value2), Some(ref value3)) => (first, T::from_float(to_float(value3) - to_float(value2))),
+                    (Some(ref value), Some(ref value2), None) => apply_op_or_return!(value, value2, third, &Add::add),
+                    (Some(ref value), None, Some(ref value3)) => apply_op_or_return!(value3, value, second, &Sub::sub),
+                    (None, Some(ref value2), Some(ref value3)) => apply_op_or_return!(value3, value2, first, &Sub::sub),
                     (Some(ref value), Some(ref value2), Some(ref value3)) => {
-                        let expected_value1 = T::from_float(to_float(value3) - to_float(value2));
-                        if expected_value1 == *value {
+                        if Some(value) == apply_op(value3, value2, &Sub::sub).as_ref() {
                             return SolveResult::Partial(bindings.clone());
                         } else {
                             return SolveResult::Conflict;
@@ -163,12 +180,11 @@ impl NumericalConstraint {
             }
             NumericalConstraint::Mul { ref first, ref second, ref third, .. } => {
                 match (bindings.get_binding(first), bindings.get_binding(second), bindings.get_binding(third)) {
-                    (Some(ref value), Some(ref value2), None) => (third, T::from_float(to_float(value) * to_float(value2))),
-                    (Some(ref value), None, Some(ref value3)) => (second, T::from_float(to_float(value3) / to_float(value))),
-                    (None, Some(ref value2), Some(ref value3)) => (first, T::from_float(to_float(value3) / to_float(value2))),
+                    (Some(ref value), Some(ref value2), None) => apply_op_or_return!(value, value2, third, &Mul::mul),
+                    (Some(ref value), None, Some(ref value3)) => apply_op_or_return!(value3, value, second, &Div::div),
+                    (None, Some(ref value2), Some(ref value3)) => apply_op_or_return!(value3, value2, first, &Div::div),
                     (Some(ref value), Some(ref value2), Some(ref value3)) => {
-                        let expected_value1 = T::from_float(to_float(value3) / to_float(value2));
-                        if expected_value1 == *value {
+                        if Some(value) == apply_op(value3, value2, &Div::div).as_ref() {
                             return SolveResult::Partial(bindings.clone());
                         } else {
                             return SolveResult::Conflict;
@@ -278,13 +294,13 @@ impl std::fmt::Display for Constraint {
 }
 
 impl Constraint {
-    pub fn solve<T: BindingsValue>(&self, bindings: &Bindings<T>) -> SolveResult<T> {
+    pub fn solve<T: ConstraintValue>(&self, bindings: &Bindings<T>) -> SolveResult<T> {
         match *self {
             Constraint::Numerical(ref numerical_constraint) => numerical_constraint.solve(bindings),
         }
     }
 
-    pub fn solve_many<T: BindingsValue>(constraints: Vec<&Constraint>, bindings: &Bindings<T>) -> SolveResult<T> {
+    pub fn solve_many<T: ConstraintValue>(constraints: Vec<&Constraint>, bindings: &Bindings<T>) -> SolveResult<T> {
         // Aggregate all bindings from the constraints that we can solve
         let fold_result = utils::fold_while_some((Vec::new(), bindings.clone()),
                                                  &mut constraints.iter(),

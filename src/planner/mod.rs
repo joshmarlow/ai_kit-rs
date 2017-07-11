@@ -1,5 +1,5 @@
-use constraints::Constraint;
-use core::{Apply, Bindings, BindingsValue, Unify};
+use constraints::{Constraint, ConstraintValue};
+use core::{Apply, Bindings, Unify};
 use itertools::Itertools;
 use itertools::FoldWhile::{Continue, Done};
 use std;
@@ -97,7 +97,7 @@ pub fn first_subgoal_to_increment(unification_indices: &Vec<UnificationIndex>) -
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct Goal<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> {
+pub struct Goal<T: ConstraintValue, U: Unify<T>, A: Apply<T, U>> {
     #[serde(default)]
     pub bindings_at_creation: Bindings<T>,
     #[serde(default="Vec::new")]
@@ -115,7 +115,7 @@ pub struct Goal<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> {
     _t_marker: PhantomData<T>,
 }
 
-impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
+impl<T: ConstraintValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
     pub fn new(pattern: U,
                parental_constraints: Vec<Constraint>,
                constraints: Vec<Constraint>,
@@ -367,7 +367,7 @@ impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Goal<T, U, A> {
     }
 }
 
-impl<T: BindingsValue, U: Unify<T>, A: Apply<T, U>> std::fmt::Display for Goal<T, U, A> {
+impl<T: ConstraintValue, U: Unify<T>, A: Apply<T, U>> std::fmt::Display for Goal<T, U, A> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         write!(f, "Goal tree:\n{}", self.pprint(1, true))
     }
@@ -395,7 +395,7 @@ pub enum InvalidPlan {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Planner<'a, T: BindingsValue, U: 'a + Unify<T>, A: 'a + Apply<T, U>> {
+pub struct Planner<'a, T: ConstraintValue, U: 'a + Unify<T>, A: 'a + Apply<T, U>> {
     bindings: Bindings<T>,
     config: PlanningConfig,
     data: Vec<&'a U>,
@@ -405,7 +405,7 @@ pub struct Planner<'a, T: BindingsValue, U: 'a + Unify<T>, A: 'a + Apply<T, U>> 
     rules: Vec<&'a A>,
 }
 
-impl<'a, T: BindingsValue, U: 'a + Unify<T>, A: 'a + Apply<T, U>> Planner<'a, T, U, A> {
+impl<'a, T: ConstraintValue, U: 'a + Unify<T>, A: 'a + Apply<T, U>> Planner<'a, T, U, A> {
     pub fn new(goal: &Goal<T, U, A>,
                bindings: &Bindings<T>,
                config: &PlanningConfig,
@@ -437,7 +437,7 @@ impl<'a, T: BindingsValue, U: 'a + Unify<T>, A: 'a + Apply<T, U>> Planner<'a, T,
     }
 }
 
-impl<'a, T: BindingsValue, U: Unify<T>, A: Apply<T, U>> Iterator for Planner<'a, T, U, A> {
+impl<'a, T: ConstraintValue, U: Unify<T>, A: Apply<T, U>> Iterator for Planner<'a, T, U, A> {
     type Item = (Goal<T, U, A>, Bindings<T>);
 
     fn next(&mut self) -> Option<(Goal<T, U, A>, Bindings<T>)> {

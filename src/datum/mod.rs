@@ -3,6 +3,7 @@ use std;
 use std::str;
 use std::collections::HashMap;
 
+use constraints::ConstraintValue;
 use core;
 use utils;
 
@@ -153,16 +154,16 @@ impl Ord for Datum {
 }
 
 impl core::BindingsValue for Datum {
+    fn variable(&self) -> Option<String> {
+        self.variable()
+    }
+}
+impl ConstraintValue for Datum {
     fn to_float(&self) -> Option<f64> {
         self.float()
     }
-
-    fn from_float(f: f64) -> Self {
-        Datum::from_float(f)
-    }
-
-    fn variable(&self) -> Option<String> {
-        self.variable()
+    fn float(c: f64) -> Self {
+        Datum::from_float(c)
     }
 }
 

@@ -12,8 +12,7 @@ mod tests;
 pub trait BindingsValue
     : Clone + Debug + Default + Deserialize + Display + Eq + PartialEq + PartialOrd + Serialize
     {
-    fn to_float(&self) -> Option<f64>;
-    fn from_float(f64) -> Self;
+    /// Construct a BindingsValue variable using the specified string as it's name
     fn variable(&self) -> Option<String>;
 }
 
