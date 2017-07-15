@@ -20,7 +20,10 @@ pub struct Rule<T: ConstraintValue, U: Unify<T>> {
     _marker: PhantomData<T>,
 }
 
-impl<T: ConstraintValue, U: Unify<T>> Apply<T, U> for Rule<T, U> {
+impl<T, U> Apply<T, U> for Rule<T, U>
+    where T: ConstraintValue,
+          U: Unify<T>
+{
     fn arg_count(&self) -> usize {
         self.lhs.len()
     }
@@ -76,7 +79,10 @@ impl<T: ConstraintValue, U: Unify<T>> Apply<T, U> for Rule<T, U> {
     }
 }
 
-impl<T: ConstraintValue, U: Unify<T>> Rule<T, U> {
+impl<T, U> Rule<T, U>
+    where T: ConstraintValue,
+          U: Unify<T>
+{
     pub fn unify(&self, facts: &Vec<&U>, bindings: &Bindings<T>) -> Option<Bindings<T>> {
         utils::fold_while_some(bindings.clone(),
                                &mut self.lhs.iter().zip(facts.iter()),
@@ -92,13 +98,20 @@ impl<T: ConstraintValue, U: Unify<T>> Rule<T, U> {
     }
 }
 
-impl<T: ConstraintValue, U: Unify<T>> std::fmt::Display for Rule<T, U> {
+impl<T, U> std::fmt::Display for Rule<T, U>
+    where T: ConstraintValue,
+          U: Unify<T>
+{
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", serde_json::to_string(&self).unwrap())
     }
 }
 
-impl<T: ConstraintValue, U: Unify<T>> Eq for Rule<T, U> {}
+impl<T, U> Eq for Rule<T, U>
+    where T: ConstraintValue,
+          U: Unify<T>
+{
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OriginCache {
@@ -120,10 +133,13 @@ impl OriginCache {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct InferenceEngine<'a, T: 'a + ConstraintValue, U: 'a + Unify<T>> {
+pub struct InferenceEngine<'a, T, U>
+    where T: 'a + ConstraintValue,
+          U: 'a + Unify<T>
+{
     pub rules: BTreeMap<&'a String, &'a Rule<T, U>>,
     pub facts: BTreeMap<&'a String, &'a U>,
-    // Facts derived from this infernece process
+    // Facts derived from this inference process
     pub derived_facts: BTreeMap<String, U>,
     pub pedigree: Pedigree,
     pub prefix: String,
@@ -132,7 +148,10 @@ pub struct InferenceEngine<'a, T: 'a + ConstraintValue, U: 'a + Unify<T>> {
     pub origin_cache: OriginCache,
 }
 
-impl<'a, T: ConstraintValue, U: Unify<T>> InferenceEngine<'a, T, U> {
+impl<'a, T, U> InferenceEngine<'a, T, U>
+    where T: 'a + ConstraintValue,
+          U: 'a + Unify<T>
+{
     pub fn new(prefix: String, rules: BTreeMap<&'a String, &'a Rule<T, U>>, facts: BTreeMap<&'a String, &'a U>) -> Self {
         InferenceEngine {
             rules: rules,
@@ -209,10 +228,13 @@ impl<'a, T: ConstraintValue, U: Unify<T>> InferenceEngine<'a, T, U> {
     }
 }
 
-pub fn chain_forward<T: ConstraintValue, U: Unify<T>>(facts: Vec<(&String, &U)>,
-                                                      rules: Vec<(&String, &Rule<T, U>)>,
-                                                      origin_cache: &mut OriginCache)
-                                                      -> Vec<(U, Bindings<T>, Origin)> {
+pub fn chain_forward<T, U>(facts: Vec<(&String, &U)>,
+                           rules: Vec<(&String, &Rule<T, U>)>,
+                           origin_cache: &mut OriginCache)
+                           -> Vec<(U, Bindings<T>, Origin)>
+    where T: ConstraintValue,
+          U: Unify<T>
+{
     let mut new_facts: Vec<(U, Bindings<T>, Origin)> = Vec::new();
 
     for (ref rule_id, ref rule) in rules.into_iter() {
@@ -253,7 +275,10 @@ fn construct_fact_args_for_rule(rule_arg_count: usize, fact_count: usize) -> Vec
     utils::permutations(fact_indexes, rule_arg_count)
 }
 
-fn is_new_fact<T: ConstraintValue, U: Unify<T>>(f: &U, facts: &Vec<(&String, &U)>) -> bool {
+fn is_new_fact<T, U>(f: &U, facts: &Vec<(&String, &U)>) -> bool
+    where T: ConstraintValue,
+          U: Unify<T>
+{
     for &(_id, fact) in facts.iter() {
         if fact.equiv(f) {
             return false;
