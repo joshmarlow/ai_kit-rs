@@ -186,11 +186,6 @@ pub trait Unify<T: BindingsValue>
     : Clone + Debug + Display + Eq + Serialize + Deserialize + PartialEq {
     fn unify(&self, &Self, &Bindings<T>) -> Option<Bindings<T>>;
     fn apply_bindings(&self, &Bindings<T>) -> Option<Self>;
-    // NOTE: replace constraints with validate_bindings
-    #[cfg(feature = "with-constraint")]
-    fn constraints<'a>(&'a self) -> Vec<&'a constraints::Constraint> {
-        Vec::new()
-    }
     fn variables(&self) -> Vec<String>;
     fn get_variable(&self, &String) -> Option<&T>;
     fn rename_variables(&self, &HashMap<String, String>) -> Self;
