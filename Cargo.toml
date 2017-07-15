@@ -17,6 +17,6 @@ default = ["with-planner", "with-forward-inference", "with-datum", "with-rule", 
 with-planner = ["with-constraint"]
 with-forward-inference = []
 with-datum = []
-with-rule = []
+with-rule = ["with-constraint"]
 with-constraint = []
 with-pedigree = []
