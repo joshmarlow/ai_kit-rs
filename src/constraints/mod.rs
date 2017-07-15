@@ -9,6 +9,9 @@ use utils;
 pub use self::numerical::*;
 mod numerical;
 
+pub use self::symbolic::*;
+mod symbolic;
+
 pub trait ConstraintValue: BindingsValue {
     /// Construct a ConstraintValue from a float
     fn float(f64) -> Self;
@@ -61,6 +64,7 @@ impl<T: ConstraintValue> std::fmt::Display for SolveResult<T> {
 pub enum Constraint {
     #[serde(rename="numerical")]
     Numerical(NumericalConstraint),
+    Symbolic(SymbolicConstraint),
 }
 
 impl Eq for Constraint {}
@@ -74,6 +78,7 @@ impl Constraint {
     pub fn solve<T: ConstraintValue>(&self, bindings: &Bindings<T>) -> SolveResult<T> {
         match *self {
             Constraint::Numerical(ref numerical_constraint) => numerical_constraint.solve(bindings),
+            Constraint::Symbolic(ref symbolic_constraint) => symbolic_constraint.solve(bindings),
         }
     }
 
@@ -110,12 +115,14 @@ impl Constraint {
     pub fn rename_variables(&self, renamed_variables: &HashMap<String, String>) -> Self {
         match *self {
             Constraint::Numerical(ref numerical_constraint) => Constraint::Numerical(numerical_constraint.rename_variables(renamed_variables)),
+            Constraint::Symbolic(ref symbolic_constraint) => Constraint::Symbolic(symbolic_constraint.rename_variables(renamed_variables)),
         }
     }
 
     pub fn variables(&self) -> Vec<String> {
         match *self {
             Constraint::Numerical(ref numerical_constraint) => numerical_constraint.variables(),
+            Constraint::Symbolic(ref symbolic_constraint) => symbolic_constraint.variables(),
         }
     }
 }
