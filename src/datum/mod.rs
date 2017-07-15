@@ -138,6 +138,9 @@ impl Ord for Datum {
 }
 
 impl core::BindingsValue for Datum {
+    fn variable(s: &String) -> Option<Self> {
+        Some(Datum::Variable(s.clone()))
+    }
     fn to_variable(&self) -> Option<String> {
         self.to_variable()
     }
