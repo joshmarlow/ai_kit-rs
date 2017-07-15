@@ -133,11 +133,12 @@ impl OriginCache {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct InferenceEngine<'a, T, U>
+pub struct InferenceEngine<'a, T, U, A>
     where T: 'a + ConstraintValue,
-          U: 'a + Unify<T>
+          U: 'a + Unify<T>,
+          A: 'a + Apply<T, U>
 {
-    pub rules: BTreeMap<&'a String, &'a Rule<T, U>>,
+    pub rules: BTreeMap<&'a String, &'a A>,
     pub facts: BTreeMap<&'a String, &'a U>,
     // Facts derived from this inference process
     pub derived_facts: BTreeMap<String, U>,
@@ -146,13 +147,15 @@ pub struct InferenceEngine<'a, T, U>
     // Used to check if an inference has already been performed,
     // allowing us to short-circuit a potentially expensive unification process.
     pub origin_cache: OriginCache,
+    _marker: PhantomData<T>,
 }
 
-impl<'a, T, U> InferenceEngine<'a, T, U>
+impl<'a, T, U, A> InferenceEngine<'a, T, U, A>
     where T: 'a + ConstraintValue,
-          U: 'a + Unify<T>
+          U: 'a + Unify<T>,
+          A: 'a + Apply<T, U>
 {
-    pub fn new(prefix: String, rules: BTreeMap<&'a String, &'a Rule<T, U>>, facts: BTreeMap<&'a String, &'a U>) -> Self {
+    pub fn new(prefix: String, rules: BTreeMap<&'a String, &'a A>, facts: BTreeMap<&'a String, &'a U>) -> Self {
         InferenceEngine {
             rules: rules,
             facts: facts,
@@ -160,6 +163,7 @@ impl<'a, T, U> InferenceEngine<'a, T, U>
             pedigree: Pedigree::new(),
             prefix: prefix,
             origin_cache: OriginCache::new(),
+            _marker: PhantomData,
         }
     }
 
@@ -228,12 +232,10 @@ impl<'a, T, U> InferenceEngine<'a, T, U>
     }
 }
 
-pub fn chain_forward<T, U>(facts: Vec<(&String, &U)>,
-                           rules: Vec<(&String, &Rule<T, U>)>,
-                           origin_cache: &mut OriginCache)
-                           -> Vec<(U, Bindings<T>, Origin)>
+pub fn chain_forward<T, U, A>(facts: Vec<(&String, &U)>, rules: Vec<(&String, &A)>, origin_cache: &mut OriginCache) -> Vec<(U, Bindings<T>, Origin)>
     where T: ConstraintValue,
-          U: Unify<T>
+          U: Unify<T>,
+          A: Apply<T, U>
 {
     let mut new_facts: Vec<(U, Bindings<T>, Origin)> = Vec::new();
 
