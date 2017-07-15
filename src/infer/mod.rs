@@ -1,104 +1,10 @@
-use serde_json;
-use std;
 use std::collections::{BTreeMap, BTreeSet};
-use std::collections::HashMap;
 use std::marker::PhantomData;
 
-use constraints::{Constraint, ConstraintValue};
+use constraints::ConstraintValue;
 use core::{Apply, Bindings, Unify};
 use pedigree::{Origin, Pedigree, RenderType};
 use utils;
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Rule<T: ConstraintValue, U: Unify<T>> {
-    #[serde(default)]
-    pub constraints: Vec<Constraint>,
-    #[serde(default = "Vec::default")]
-    pub lhs: Vec<U>,
-    pub rhs: U,
-    #[serde(default)]
-    _marker: PhantomData<T>,
-}
-
-impl<T: ConstraintValue, U: Unify<T>> Apply<T, U> for Rule<T, U> {
-    fn arg_count(&self) -> usize {
-        self.lhs.len()
-    }
-
-    fn apply(&self, facts: &Vec<&U>, bindings: &Bindings<T>) -> Option<(U, Bindings<T>)> {
-        self.unify(facts, bindings)
-            .and_then(|bindings| self.solve_constraints(&bindings))
-            .and_then(|bindings| self.apply_bindings(&bindings).and_then(|rhs| Some((rhs, bindings))))
-    }
-
-    fn constraints<'a>(&'a self) -> Vec<&'a Constraint> {
-        self.constraints.iter().collect()
-    }
-
-    fn r_apply(&self, fact: &U, bindings: &Bindings<T>) -> Option<(Vec<U>, Bindings<T>)> {
-        self.rhs
-            .apply_bindings(bindings)
-            .and_then(|bound_rhs| {
-                bound_rhs.unify(&fact, bindings)
-                    .and_then(|bindings| self.solve_constraints(&bindings))
-                    .and_then(|bindings| {
-                        utils::filter_map_all(&mut self.lhs.iter(), &|f| f.apply_bindings(&bindings))
-                            .and_then(|bound_lhs| Some((bound_lhs, bindings.clone())))
-                    })
-            })
-    }
-
-    /// Construct a new version of this rule but with all variables updated to be unique for this invocation
-    fn snowflake(&self, suffix: String) -> Self {
-        // Gather all variables
-        let mut variables = self.rhs.variables();
-        for lhs in self.lhs.iter() {
-            variables.extend(lhs.variables());
-        }
-        for constraint in self.constraints.iter() {
-            variables.extend(constraint.variables());
-        }
-
-        let renamed_variable: HashMap<String, String> = variables.into_iter()
-            .map(|var| (var.clone(), format!("{}::{}", var, suffix)))
-            .collect();
-
-        let rhs = self.rhs.rename_variables(&renamed_variable);
-        let lhs: Vec<U> = self.lhs.iter().map(|lhs| lhs.rename_variables(&renamed_variable)).collect();
-        let constraints: Vec<Constraint> = self.constraints.iter().map(|constraint| constraint.rename_variables(&renamed_variable)).collect();
-
-        Rule {
-            constraints: constraints,
-            lhs: lhs,
-            rhs: rhs,
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<T: ConstraintValue, U: Unify<T>> Rule<T, U> {
-    pub fn unify(&self, facts: &Vec<&U>, bindings: &Bindings<T>) -> Option<Bindings<T>> {
-        utils::fold_while_some(bindings.clone(),
-                               &mut self.lhs.iter().zip(facts.iter()),
-                               &|bindings, (t1, t2)| t1.unify(t2, &bindings))
-    }
-
-    pub fn apply_bindings(&self, bindings: &Bindings<T>) -> Option<U> {
-        self.rhs.apply_bindings(bindings)
-    }
-
-    fn solve_constraints(&self, bindings: &Bindings<T>) -> Option<Bindings<T>> {
-        Constraint::solve_many(self.constraints.iter().collect(), bindings).ok()
-    }
-}
-
-impl<T: ConstraintValue, U: Unify<T>> std::fmt::Display for Rule<T, U> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", serde_json::to_string(&self).unwrap())
-    }
-}
-
-impl<T: ConstraintValue, U: Unify<T>> Eq for Rule<T, U> {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OriginCache {
@@ -120,20 +26,29 @@ impl OriginCache {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct InferenceEngine<'a, T: 'a + ConstraintValue, U: 'a + Unify<T>> {
-    pub rules: BTreeMap<&'a String, &'a Rule<T, U>>,
+pub struct InferenceEngine<'a, T, U, A>
+    where T: 'a + ConstraintValue,
+          U: 'a + Unify<T>,
+          A: 'a + Apply<T, U>
+{
+    pub rules: BTreeMap<&'a String, &'a A>,
     pub facts: BTreeMap<&'a String, &'a U>,
-    // Facts derived from this infernece process
+    // Facts derived from this inference process
     pub derived_facts: BTreeMap<String, U>,
     pub pedigree: Pedigree,
     pub prefix: String,
     // Used to check if an inference has already been performed,
     // allowing us to short-circuit a potentially expensive unification process.
     pub origin_cache: OriginCache,
+    _marker: PhantomData<T>,
 }
 
-impl<'a, T: ConstraintValue, U: Unify<T>> InferenceEngine<'a, T, U> {
-    pub fn new(prefix: String, rules: BTreeMap<&'a String, &'a Rule<T, U>>, facts: BTreeMap<&'a String, &'a U>) -> Self {
+impl<'a, T, U, A> InferenceEngine<'a, T, U, A>
+    where T: 'a + ConstraintValue,
+          U: 'a + Unify<T>,
+          A: 'a + Apply<T, U>
+{
+    pub fn new(prefix: String, rules: BTreeMap<&'a String, &'a A>, facts: BTreeMap<&'a String, &'a U>) -> Self {
         InferenceEngine {
             rules: rules,
             facts: facts,
@@ -141,6 +56,7 @@ impl<'a, T: ConstraintValue, U: Unify<T>> InferenceEngine<'a, T, U> {
             pedigree: Pedigree::new(),
             prefix: prefix,
             origin_cache: OriginCache::new(),
+            _marker: PhantomData,
         }
     }
 
@@ -209,10 +125,11 @@ impl<'a, T: ConstraintValue, U: Unify<T>> InferenceEngine<'a, T, U> {
     }
 }
 
-pub fn chain_forward<T: ConstraintValue, U: Unify<T>>(facts: Vec<(&String, &U)>,
-                                                      rules: Vec<(&String, &Rule<T, U>)>,
-                                                      origin_cache: &mut OriginCache)
-                                                      -> Vec<(U, Bindings<T>, Origin)> {
+pub fn chain_forward<T, U, A>(facts: Vec<(&String, &U)>, rules: Vec<(&String, &A)>, origin_cache: &mut OriginCache) -> Vec<(U, Bindings<T>, Origin)>
+    where T: ConstraintValue,
+          U: Unify<T>,
+          A: Apply<T, U>
+{
     let mut new_facts: Vec<(U, Bindings<T>, Origin)> = Vec::new();
 
     for (ref rule_id, ref rule) in rules.into_iter() {
@@ -253,7 +170,10 @@ fn construct_fact_args_for_rule(rule_arg_count: usize, fact_count: usize) -> Vec
     utils::permutations(fact_indexes, rule_arg_count)
 }
 
-fn is_new_fact<T: ConstraintValue, U: Unify<T>>(f: &U, facts: &Vec<(&String, &U)>) -> bool {
+fn is_new_fact<T, U>(f: &U, facts: &Vec<(&String, &U)>) -> bool
+    where T: ConstraintValue,
+          U: Unify<T>
+{
     for &(_id, fact) in facts.iter() {
         if fact.equiv(f) {
             return false;
