@@ -4,6 +4,7 @@ use std::iter::{Extend, FromIterator};
 
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "with-constraint")]
 use constraints;
 
 #[cfg(test)]
@@ -186,6 +187,7 @@ pub trait Unify<T: BindingsValue>
     fn unify(&self, &Self, &Bindings<T>) -> Option<Bindings<T>>;
     fn apply_bindings(&self, &Bindings<T>) -> Option<Self>;
     // NOTE: replace constraints with validate_bindings
+    #[cfg(feature = "with-constraint")]
     fn constraints<'a>(&'a self) -> Vec<&'a constraints::Constraint> {
         Vec::new()
     }
@@ -202,6 +204,7 @@ pub trait Apply<T: BindingsValue, U: Unify<T>>
     : Clone + Debug + Display + Eq + PartialEq + Deserialize + Serialize {
     fn arg_count(&self) -> usize;
     fn apply(&self, &Vec<&U>, &Bindings<T>) -> Option<(U, Bindings<T>)>;
+    #[cfg(feature = "with-constraint")]
     fn constraints<'a>(&'a self) -> Vec<&'a constraints::Constraint>;
     fn r_apply(&self, &U, &Bindings<T>) -> Option<(Vec<U>, Bindings<T>)>;
     fn snowflake(&self, String) -> Self;

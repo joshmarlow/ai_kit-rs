@@ -3,6 +3,7 @@ use std;
 use std::str;
 use std::collections::HashMap;
 
+#[cfg(feature = "with-constraint")]
 use constraints::ConstraintValue;
 use core;
 use utils;
@@ -145,6 +146,8 @@ impl core::BindingsValue for Datum {
         self.to_variable()
     }
 }
+
+#[cfg(feature = "with-constraint")]
 impl ConstraintValue for Datum {
     fn to_float(&self) -> Option<f64> {
         self.to_float()
