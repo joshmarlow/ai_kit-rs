@@ -199,7 +199,7 @@ pub trait Apply<T: BindingsValue, U: Unify<T>>
     : Clone + Debug + Display + Eq + PartialEq + Deserialize + Serialize {
     fn arg_count(&self) -> usize;
     fn apply(&self, &Vec<&U>, &Bindings<T>) -> Option<(U, Bindings<T>)>;
-    // NOTE: replace constraints with validate_bindings
+    // NOTE: replace constraints with validate_bindings?
     #[cfg(feature = "with-constraint")]
     fn constraints<'a>(&'a self) -> Vec<&'a constraints::Constraint>;
     fn r_apply(&self, &U, &Bindings<T>) -> Option<(Vec<U>, Bindings<T>)>;
