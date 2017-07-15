@@ -10,7 +10,7 @@ pub use self::numerical::*;
 mod numerical;
 
 pub trait ConstraintValue: BindingsValue {
-    /// Constraint a ConstraintValue from a float
+    /// Construct a ConstraintValue from a float
     fn float(f64) -> Self;
     /// Attempt to convert this value to a float
     fn to_float(&self) -> Option<f64>;
