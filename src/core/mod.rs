@@ -12,9 +12,10 @@ mod tests;
 pub trait BindingsValue
     : Clone + Debug + Default + Deserialize + Display + Eq + PartialEq + PartialOrd + Serialize
     {
-    fn to_float(&self) -> Option<f64>;
-    fn from_float(f64) -> Self;
-    fn variable(&self) -> Option<String>;
+    /// Construct a BindingsValue variable using the specified string as it's name
+    fn to_variable(&self) -> Option<String> {
+        None
+    }
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
@@ -69,7 +70,7 @@ impl<T: BindingsValue> Bindings<T> {
     pub fn set_binding_mut(&mut self, variable: &String, val: T) {
         self.ensure_equivalence_exists_mut(variable);
 
-        if let Some(variable2) = val.variable() {
+        if let Some(variable2) = val.to_variable() {
             self.add_equivalence(variable, &variable2);
         } else {
             for equivalent_variable in self.equivalences.get(variable).unwrap().iter() {
@@ -107,7 +108,7 @@ impl<T: BindingsValue> Bindings<T> {
 
     pub fn update_bindings(&self, variable: &String, value: &T) -> Option<Self> {
         // If we are setting a variable to itself, then do nothing
-        if Some(variable.clone()) == value.variable() {
+        if Some(variable.clone()) == value.to_variable() {
             return Some(self.clone());
         }
         match self.get_binding(&variable) {

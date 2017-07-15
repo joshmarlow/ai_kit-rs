@@ -3,6 +3,7 @@ use std;
 use std::str;
 use std::collections::HashMap;
 
+use constraints::ConstraintValue;
 use core;
 use utils;
 
@@ -30,22 +31,6 @@ pub enum Datum {
 }
 
 impl Datum {
-    pub fn from_string(s: &String) -> Datum {
-        Datum::String(s.clone())
-    }
-
-    pub fn from_int(i: i64) -> Datum {
-        Datum::Int(i)
-    }
-
-    pub fn from_float(f: f64) -> Datum {
-        Datum::Float(f)
-    }
-
-    pub fn from_variable(s: String) -> Datum {
-        Datum::Variable(s)
-    }
-
     pub fn is_compound(&self) -> bool {
         match *self {
             Datum::Compound { head: ref _head, args: ref _args } => true,
@@ -53,21 +38,28 @@ impl Datum {
         }
     }
 
-    pub fn string(&self) -> Option<String> {
+    pub fn head<'a>(&'a self) -> Option<&'a Box<Datum>> {
+        match *self {
+            Datum::Compound { ref head, args: ref _args } => Some(head),
+            _ => None,
+        }
+    }
+
+    pub fn to_string(&self) -> Option<String> {
         match *self {
             Datum::String(ref value) => Some(value.clone()),
             _ => None,
         }
     }
 
-    pub fn int(&self) -> Option<i64> {
+    pub fn to_int(&self) -> Option<i64> {
         match *self {
             Datum::Int(ref value) => Some(value.clone()),
             _ => None,
         }
     }
 
-    pub fn float(&self) -> Option<f64> {
+    pub fn to_float(&self) -> Option<f64> {
         match *self {
             Datum::Float(ref f_value) => Some(f_value.clone()),
             Datum::Int(ref i_value) => Some((i_value.clone() as f64)),
@@ -75,16 +67,9 @@ impl Datum {
         }
     }
 
-    pub fn variable(&self) -> Option<String> {
+    pub fn to_variable(&self) -> Option<String> {
         match *self {
             Datum::Variable(ref value) => Some(value.clone()),
-            _ => None,
-        }
-    }
-
-    pub fn head<'a>(&'a self) -> Option<&'a Box<Datum>> {
-        match *self {
-            Datum::Compound { ref head, args: ref _args } => Some(head),
             _ => None,
         }
     }
@@ -153,16 +138,16 @@ impl Ord for Datum {
 }
 
 impl core::BindingsValue for Datum {
+    fn to_variable(&self) -> Option<String> {
+        self.to_variable()
+    }
+}
+impl ConstraintValue for Datum {
     fn to_float(&self) -> Option<f64> {
-        self.float()
+        self.to_float()
     }
-
-    fn from_float(f: f64) -> Self {
-        Datum::from_float(f)
-    }
-
-    fn variable(&self) -> Option<String> {
-        self.variable()
+    fn float(c: f64) -> Self {
+        Datum::Float(c)
     }
 }
 
