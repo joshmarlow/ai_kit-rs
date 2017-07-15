@@ -10,6 +10,9 @@ extern crate serde_json;
 extern crate serde_derive;
 extern crate uuid;
 
+#[cfg(feature = "with-chrono")]
+extern crate chrono;
+
 #[macro_use]
 pub mod utils;
 #[macro_use]

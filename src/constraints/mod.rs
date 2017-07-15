@@ -9,6 +9,11 @@ use utils;
 pub use self::numerical::*;
 mod numerical;
 
+#[cfg(feature = "with-chrono")]
+pub use self::datetime::*;
+#[cfg(feature = "with-chrono")]
+mod datetime;
+
 pub trait ConstraintValue: BindingsValue {
     /// Constraint a ConstraintValue from a float
     fn float(f64) -> Self;
@@ -66,21 +71,15 @@ pub enum StringConstraint {
     #[serde(rename="neq")]
     Neq {...},
 }
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub enum DateTimeConstraint {
-    #[serde(rename="set")]
-    Set {...},
-    #[serde(rename=">")]
-    GreaterThan {...},
-    #[serde(rename="sum")]
-    Sum {...},
-}*/
+*/
 
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub enum Constraint {
     #[serde(rename="numerical")]
     Numerical(NumericalConstraint),
+    #[cfg(feature = "with-chrono")]
+    #[serde(rename="datetime")]
+    Numerical(DateTimeConstraint),
 }
 
 impl Eq for Constraint {}
@@ -94,6 +93,8 @@ impl Constraint {
     pub fn solve<T: ConstraintValue>(&self, bindings: &Bindings<T>) -> SolveResult<T> {
         match *self {
             Constraint::Numerical(ref numerical_constraint) => numerical_constraint.solve(bindings),
+            #[cfg(feature = "with-chrono")]
+            Constraint::DateTimeConstraint(ref datetime_constraint) => datetime_constraint.solve(bindings),
         }
     }
 
@@ -130,12 +131,18 @@ impl Constraint {
     pub fn rename_variables(&self, renamed_variables: &HashMap<String, String>) -> Self {
         match *self {
             Constraint::Numerical(ref numerical_constraint) => Constraint::Numerical(numerical_constraint.rename_variables(renamed_variables)),
+            #[cfg(feature = "with-chrono")]
+            Constraint::DateTimeConstraint(ref datetime_constraint) => {
+                Constraint::DateTimeConstraint(datetime_constraint.rename_variables(renamed_variables))
+            }
         }
     }
 
     pub fn variables(&self) -> Vec<String> {
         match *self {
             Constraint::Numerical(ref numerical_constraint) => numerical_constraint.variables(),
+            #[cfg(feature = "with-chrono")]
+            Constraint::DateTimeConstraint(ref datetime_constraint) => datetime_constraint.variables(),
         }
     }
 }
