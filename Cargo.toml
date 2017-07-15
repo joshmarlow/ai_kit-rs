@@ -12,9 +12,9 @@ serde_json = "0.9"
 uuid = { version = "0.4", features = ["v4"] }
 
 [features]
-default = ["with-planner", "with-forward-inference", "with-datum", "with-rule", "with-constraint", "with-pedigree"]
+default = ["with-planner", "with-forward-inference", "with-datum", "with-rule", "with-pedigree"]
 
-with-planner = []
+with-planner = ["with-constraint"]
 with-forward-inference = []
 with-datum = []
 with-rule = []
