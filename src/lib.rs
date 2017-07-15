@@ -21,3 +21,4 @@ pub mod datum;
 pub mod infer;
 pub mod pedigree;
 pub mod planner;
+pub mod rule;
