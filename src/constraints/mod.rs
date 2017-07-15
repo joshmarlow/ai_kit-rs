@@ -57,26 +57,6 @@ impl<T: ConstraintValue> std::fmt::Display for SolveResult<T> {
     }
 }
 
-/*#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub enum StringConstraint {
-    #[serde(rename="set")]
-    Set {...},
-    #[serde(rename="eq")]
-    Eq {...},
-    #[serde(rename="neq")]
-    Neq {...},
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub enum DateTimeConstraint {
-    #[serde(rename="set")]
-    Set {...},
-    #[serde(rename=">")]
-    GreaterThan {...},
-    #[serde(rename="sum")]
-    Sum {...},
-}*/
-
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub enum Constraint {
     #[serde(rename="numerical")]

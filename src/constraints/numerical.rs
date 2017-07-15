@@ -2,6 +2,36 @@ use serde_json;
 use std;
 use super::*;
 
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, PartialOrd, Serialize)]
+pub struct Number {
+    value: f64,
+}
+
+impl std::fmt::Display for Number {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
+
+impl Eq for Number {}
+impl BindingsValue for Number {}
+
+impl ConstraintValue for Number {
+    fn float(f: f64) -> Self {
+        Number { value: f }
+    }
+
+    fn to_float(&self) -> Option<f64> {
+        Some(self.value)
+    }
+}
+
+impl Number {
+    pub fn new(f: f64) -> Self {
+        Number { value: f }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub enum NumericalConstraint {
     /// ?x = CONSTANT

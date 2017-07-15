@@ -13,7 +13,9 @@ pub trait BindingsValue
     : Clone + Debug + Default + Deserialize + Display + Eq + PartialEq + PartialOrd + Serialize
     {
     /// Construct a BindingsValue variable using the specified string as it's name
-    fn to_variable(&self) -> Option<String>;
+    fn to_variable(&self) -> Option<String> {
+        None
+    }
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
