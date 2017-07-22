@@ -601,9 +601,8 @@ mod solve_tests {
     use super::*;
     use core::Bindings;
 
-    #[test]
-    fn test_solve_conjunction() {
-        let data = from_json!(Vec<Datum>, [
+    fn setup_data() -> Vec<Datum> {
+        from_json!(Vec<Datum>, [
             {"vec": [
               {"vec":[ {"str": "current-state"}, {"float": 1}]},
               {"vec":[ {"str": "time"}, {"float": 1}]}]},
@@ -613,41 +612,14 @@ mod solve_tests {
             {"vec": [
               {"vec":[ {"str": "current-state"}, {"float": 2}]},
               {"vec":[ {"str": "time"}, {"float": 2}]}]},
-        ]);
-        let goals = from_json!(Vec<Goal<Datum, Datum, Rule<Datum, Datum>>>, [
-          {
-              "pattern": {
-                "vec": [
-                  {"vec": [{"str": "current-state"}, {"var": "?s0"}]},
-                  {"vec": [{"str": "time"}, {"var": "?t0"}]}
-                ]
-              },
-          },
-          {
-              "pattern": {
-                "vec": [
-                  {"vec": [{"str": "current-state"}, {"var": "?s1"}]},
-                  {"vec": [{"str": "time"}, {"var": "?t1"}]}
-                ]
-              },
-              "constraints": [{"numerical": {"set": {"variable": "?diff", "constant": 1}}},
-                                {"numerical": {"sum": {"first": "?s0", "second": "?diff", "third": "?s1"}}},
-                                {"numerical": {"sum": {"first": "?t0", "second": "?diff", "third": "?t1"}}}],
-          },
-          {
-              "pattern": {
-                "vec": [
-                  {"vec": [{"str": "current-state"}, {"var": "?s2"}]},
-                  {"vec": [{"str": "time"}, {"var": "?t2"}]}
-                ]
-              },
-              "constraints": [{"numerical": {"set": {"variable": "?diff", "constant": 1}}},
-                                {"numerical": {"sum": {"first": "?s1", "second": "?diff", "third": "?s2"}}},
-                                {"numerical": {"sum": {"first": "?t1", "second": "?diff", "third": "?t2"}}}],
-          }
-        ]);
+            {"vec": [
+              {"vec":[ {"str": "current-state"}, {"float": 3}]},
+              {"vec":[ {"str": "time"}, {"float": 3}]}]},
+        ])
+    }
 
-        let expected_solved_goals = from_json!(Vec<Goal<Datum, Datum, Rule<Datum, Datum>>>, [
+    fn setup_goals() -> Vec<Goal<Datum, Datum, Rule<Datum, Datum>>> {
+        from_json!(Vec<Goal<Datum, Datum, Rule<Datum, Datum>>>, [
           {
               "pattern": {
                 "vec": [
@@ -655,7 +627,6 @@ mod solve_tests {
                   {"vec": [{"str": "time"}, {"var": "?t0"}]}
                 ]
               },
-              "unification_index": {"datum": 1},
           },
           {
               "pattern": {
@@ -667,7 +638,6 @@ mod solve_tests {
               "constraints": [{"numerical": {"set": {"variable": "?diff", "constant": 1}}},
                                 {"numerical": {"sum": {"first": "?s0", "second": "?diff", "third": "?s1"}}},
                                 {"numerical": {"sum": {"first": "?t0", "second": "?diff", "third": "?t1"}}}],
-              "unification_index": {"datum": 0},
           },
           {
               "pattern": {
@@ -679,9 +649,86 @@ mod solve_tests {
               "constraints": [{"numerical": {"set": {"variable": "?diff", "constant": 1}}},
                                 {"numerical": {"sum": {"first": "?s1", "second": "?diff", "third": "?s2"}}},
                                 {"numerical": {"sum": {"first": "?t1", "second": "?diff", "third": "?t2"}}}],
-              "unification_index": {"datum": 2},
           }
-        ]);
+        ])
+    }
+
+    fn setup_expected_solved_goals() -> Vec<Goal<Datum, Datum, Rule<Datum, Datum>>> {
+        from_json!(Vec<Goal<Datum, Datum, Rule<Datum, Datum>>>, [
+          {
+              "pattern": {
+                "vec": [
+                  {"vec": [{"str": "current-state"}, {"var": "?s0"}]},
+                  {"vec": [{"str": "time"}, {"var": "?t0"}]}
+                ]
+              },
+          },
+          {
+              "pattern": {
+                "vec": [
+                  {"vec": [{"str": "current-state"}, {"var": "?s1"}]},
+                  {"vec": [{"str": "time"}, {"var": "?t1"}]}
+                ]
+              },
+              "constraints": [{"numerical": {"set": {"variable": "?diff", "constant": 1}}},
+                                {"numerical": {"sum": {"first": "?s0", "second": "?diff", "third": "?s1"}}},
+                                {"numerical": {"sum": {"first": "?t0", "second": "?diff", "third": "?t1"}}}],
+          },
+          {
+              "pattern": {
+                "vec": [
+                  {"vec": [{"str": "current-state"}, {"var": "?s2"}]},
+                  {"vec": [{"str": "time"}, {"var": "?t2"}]}
+                ]
+              },
+              "constraints": [{"numerical": {"set": {"variable": "?diff", "constant": 1}}},
+                                {"numerical": {"sum": {"first": "?s1", "second": "?diff", "third": "?s2"}}},
+                                {"numerical": {"sum": {"first": "?t1", "second": "?diff", "third": "?t2"}}}],
+          }
+        ])
+    }
+
+    #[test]
+    fn test_solve_conjunction() {
+        let data = setup_data();
+        let goals = setup_goals();
+        let mut expected_solved_goals = setup_expected_solved_goals();
+        expected_solved_goals[0].unification_index = UnificationIndex::Datum(0);
+        expected_solved_goals[1].unification_index = UnificationIndex::Datum(2);
+        expected_solved_goals[2].unification_index = UnificationIndex::Datum(3);
+
+        let expected_bindings = Bindings::new()
+            .set_binding(&"?diff".to_string(), Datum::Float(1.0))
+            .set_binding(&"?s0".to_string(), Datum::Float(1.0))
+            .set_binding(&"?t0".to_string(), Datum::Float(1.0))
+            .set_binding(&"?s1".to_string(), Datum::Float(2.0))
+            .set_binding(&"?t1".to_string(), Datum::Float(2.0))
+            .set_binding(&"?s2".to_string(), Datum::Float(3.0))
+            .set_binding(&"?t2".to_string(), Datum::Float(3.0));
+
+        let solved_goals = Goal::solve_conjunction(goals.iter().collect(),
+                                                   &data.iter().collect(),
+                                                   &Vec::new(),
+                                                   0,
+                                                   &PlanningConfig::default());
+        assert_eq!(solved_goals.is_some(), true);
+        let (solved_goals, bindings) = solved_goals.unwrap();
+        assert_eq!(solved_goals, expected_solved_goals);
+        assert_eq!(bindings, expected_bindings);
+    }
+
+    #[test]
+    fn test_solve_conjunction_respects_bindings_at_creation() {
+        let data = setup_data();
+        let mut goals = setup_goals();
+        goals[0].bindings_at_creation.set_binding_mut(&"?t0".to_string(), Datum::Float(0.0));
+
+        let mut expected_solved_goals = setup_expected_solved_goals();
+        expected_solved_goals[0].unification_index = UnificationIndex::Datum(1);
+        expected_solved_goals[0].bindings_at_creation.set_binding_mut(&"?t0".to_string(), Datum::Float(0.0));
+        expected_solved_goals[1].unification_index = UnificationIndex::Datum(0);
+        expected_solved_goals[2].unification_index = UnificationIndex::Datum(2);
+
         let expected_bindings = Bindings::new()
             .set_binding(&"?diff".to_string(), Datum::Float(1.0))
             .set_binding(&"?s0".to_string(), Datum::Float(0.0))
@@ -700,6 +747,42 @@ mod solve_tests {
         let (solved_goals, bindings) = solved_goals.unwrap();
         assert_eq!(solved_goals, expected_solved_goals);
         assert_eq!(bindings, expected_bindings);
+    }
+
+    #[test]
+    fn test_solve_conjunction_with_criteria() {
+        let data = setup_data();
+        let goals = setup_goals();
+        let mut expected_solved_goals = setup_expected_solved_goals();
+        expected_solved_goals[0].unification_index = UnificationIndex::Datum(1);
+        expected_solved_goals[1].unification_index = UnificationIndex::Datum(0);
+        expected_solved_goals[2].unification_index = UnificationIndex::Datum(2);
+
+        let expected_bindings = Bindings::new()
+            .set_binding(&"?diff".to_string(), Datum::Float(1.0))
+            .set_binding(&"?s0".to_string(), Datum::Float(0.0))
+            .set_binding(&"?t0".to_string(), Datum::Float(0.0))
+            .set_binding(&"?s1".to_string(), Datum::Float(1.0))
+            .set_binding(&"?t1".to_string(), Datum::Float(1.0))
+            .set_binding(&"?s2".to_string(), Datum::Float(2.0))
+            .set_binding(&"?t2".to_string(), Datum::Float(2.0));
+
+        let solved_goals = Goal::solve_conjunction_with_criteria(goals.iter().collect(),
+                                                                 &data.iter().collect(),
+                                                                 &Vec::new(),
+                                                                 0,
+                                                                 &PlanningConfig::default(),
+                                                                 &|_goals, bindings| if bindings.get_binding(&"?t0".to_string())
+                                                                     .eq(&Some(Datum::Float(0.0))) {
+                                                                     Some(42)
+                                                                 } else {
+                                                                     None
+                                                                 });
+        assert_eq!(solved_goals.is_some(), true);
+        let (solved_goals, bindings, criteria_result) = solved_goals.unwrap();
+        assert_eq!(solved_goals, expected_solved_goals);
+        assert_eq!(bindings, expected_bindings);
+        assert_eq!(criteria_result, 42);
     }
 }
 

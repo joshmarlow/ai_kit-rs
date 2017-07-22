@@ -185,6 +185,30 @@ impl<T, U, A> Goal<T, U, A>
         }
     }
 
+    pub fn solve_conjunction_with_criteria<X>(goals: Vec<&Self>,
+                                              data: &Vec<&U>,
+                                              rules: &Vec<&A>,
+                                              increments: usize,
+                                              config: &PlanningConfig,
+                                              criteria: &Fn(&Vec<Self>, &Bindings<T>) -> Option<X>)
+                                              -> Option<(Vec<Self>, Bindings<T>, X)> {
+        if increments < config.max_increments {
+            Goal::solve_conjunction(goals, data, rules, increments, config).and_then(|(goals, bindings)| match criteria(&goals, &bindings) {
+                Some(result) => Some((goals, bindings, result)),
+                None => {
+                    Goal::solve_conjunction_with_criteria(goals.iter().collect(),
+                                                          data,
+                                                          rules,
+                                                          increments,
+                                                          config,
+                                                          criteria)
+                }
+            })
+        } else {
+            None
+        }
+    }
+
     /// Verify that this plan does not break any of the planning specifications and that it is consistent
     pub fn validate(&self, data: &Vec<&U>, rules: &Vec<&A>, bindings: &Bindings<T>, config: &PlanningConfig) -> Result<Bindings<T>, InvalidPlan> {
         config.validate_plan(self).and_then(|_| match self.satisified(&data, &rules, bindings) {
