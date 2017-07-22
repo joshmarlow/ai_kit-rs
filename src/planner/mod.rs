@@ -5,6 +5,7 @@ use itertools::FoldWhile::{Continue, Done};
 use std;
 use std::collections::HashSet;
 use std::marker::PhantomData;
+use utils;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum UnificationIndex {
@@ -68,8 +69,8 @@ fn increment_unification_index(current_unification_index: &UnificationIndex, dat
     }
 }
 
-/// Determine the first subgoal to increment
-pub fn first_subgoal_to_increment(unification_indices: &Vec<UnificationIndex>) -> Option<usize> {
+/// Determine the first goal to increment
+pub fn first_goal_to_increment(unification_indices: &Vec<UnificationIndex>) -> Option<usize> {
     if unification_indices.is_empty() {
         None
     } else {
@@ -152,6 +153,46 @@ impl<T, U, A> Goal<T, U, A>
                   Vec::new())
     }
 
+    pub fn solve(goal: &Self, data: &Vec<&U>, rules: &Vec<&A>, increments: usize, config: &PlanningConfig) -> Option<(usize, Self, Bindings<T>)> {
+        if increments < config.max_increments {
+            goal.increment(&data, &rules, increments, config.max_depth).and_then(|goal| match goal.validate(data, rules, &Bindings::new(), config) {
+                Ok(bindings) => Some((increments, goal.clone(), bindings.clone())),
+                Err(_) => Goal::solve(&goal, data, rules, increments + 1, config),
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn solve_conjunction(goals: Vec<&Self>,
+                             data: &Vec<&U>,
+                             rules: &Vec<&A>,
+                             increments: usize,
+                             config: &PlanningConfig)
+                             -> Option<(Vec<Self>, Bindings<T>)> {
+        if increments < config.max_increments {
+            Goal::increment_conjunction(goals, data, rules, increments, config.max_depth).and_then(|goals| {
+                let validated_bindings = utils::fold_while_some(Bindings::new(),
+                                                                &mut goals.iter(),
+                                                                &|bindings, goal| goal.validate(data, rules, &bindings, config).ok());
+                match validated_bindings {
+                    Some(bindings) => Some((goals, bindings)),
+                    None => Goal::solve_conjunction(goals.iter().collect(), data, rules, increments + 1, config),
+                }
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Verify that this plan does not break any of the planning specifications and that it is consistent
+    pub fn validate(&self, data: &Vec<&U>, rules: &Vec<&A>, bindings: &Bindings<T>, config: &PlanningConfig) -> Result<Bindings<T>, InvalidPlan> {
+        config.validate_plan(self).and_then(|_| match self.satisified(&data, &rules, bindings) {
+            Some(bindings) => Ok(bindings),
+            None => Err(InvalidPlan::BindingsConflict),
+        })
+    }
+
     /// Construct a mutated plan
     pub fn increment(&self, data: &Vec<&U>, rules: &Vec<&A>, snowflake_prefix_id: usize, max_depth: usize) -> Option<Self> {
         if max_depth == 0 {
@@ -161,7 +202,11 @@ impl<T, U, A> Goal<T, U, A>
 
         // If there are any subgoals, increment them first
         if !self.subgoals.is_empty() {
-            if let Some(subgoals) = self.increment_subgoals(data, rules, snowflake_prefix_id, max_depth) {
+            if let Some(subgoals) = Goal::increment_conjunction(self.subgoals.iter().collect(),
+                                                                data,
+                                                                rules,
+                                                                snowflake_prefix_id,
+                                                                max_depth) {
                 goal.subgoals = subgoals;
                 return Some(goal);
             }
@@ -251,26 +296,31 @@ impl<T, U, A> Goal<T, U, A>
         })
     }
 
-    pub fn increment_subgoals(&self, data: &Vec<&U>, rules: &Vec<&A>, snowflake_prefix_id: usize, max_depth: usize) -> Option<Vec<Self>> {
-        let mut subgoals = self.subgoals.clone();
-        let subgoal_count = subgoals.len();
-        let is_last_subgoal = |idx| idx + 1 == subgoal_count;
+    pub fn increment_conjunction(goals: Vec<&Self>,
+                                 data: &Vec<&U>,
+                                 rules: &Vec<&A>,
+                                 snowflake_prefix_id: usize,
+                                 max_depth: usize)
+                                 -> Option<Vec<Self>> {
+        let mut goals: Vec<Self> = goals.into_iter().map(|g| g.clone()).collect();
+        let goal_count = goals.len();
+        let is_last_goal = |idx| idx + 1 == goal_count;
         loop {
-            let unification_indices = subgoals.iter().map(|sg| sg.unification_index.clone()).collect();
-            let subgoal_idx_to_increment = first_subgoal_to_increment(&unification_indices);
-            match subgoal_idx_to_increment {
+            let unification_indices = goals.iter().map(|sg| sg.unification_index.clone()).collect();
+            let goal_idx_to_increment = first_goal_to_increment(&unification_indices);
+            match goal_idx_to_increment {
                 None => return None,
                 Some(idx) => {
-                    if let Some(new_subgoal) = subgoals[idx].increment(data, rules, snowflake_prefix_id, max_depth - 1) {
-                        subgoals[idx] = new_subgoal;
+                    if let Some(new_goal) = goals[idx].increment(data, rules, snowflake_prefix_id, max_depth - 1) {
+                        goals[idx] = new_goal;
 
-                        if is_last_subgoal(idx) {
-                            return Some(subgoals);
+                        if is_last_goal(idx) {
+                            return Some(goals);
                         } else {
-                            subgoals[idx + 1].unification_index = UnificationIndex::Init;
+                            goals[idx + 1].unification_index = UnificationIndex::Init;
                         }
                     } else {
-                        subgoals[idx].unification_index = UnificationIndex::Exhausted;
+                        goals[idx].unification_index = UnificationIndex::Exhausted;
                     }
                 }
             }
@@ -377,13 +427,14 @@ impl<T, U, A> std::fmt::Display for Goal<T, U, A>
           A: Apply<T, U>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        write!(f, "Goal tree:\n{}", self.pprint(1, true))
+        write!(f, "Goal tree:\n{}", self.pprint(1, false))
     }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PlanningConfig {
     pub max_depth: usize,
+    pub max_increments: usize,
     pub reuse_data: bool,
 }
 
@@ -391,8 +442,25 @@ impl Default for PlanningConfig {
     fn default() -> Self {
         PlanningConfig {
             max_depth: 3,
+            max_increments: 100,
             reuse_data: true,
         }
+    }
+}
+
+impl PlanningConfig {
+    /// Verify that nothing in plan contradicts specifications set in the PlanningConfig
+    pub fn validate_plan<T, U, A>(&self, goal: &Goal<T, U, A>) -> Result<(), InvalidPlan>
+        where T: ConstraintValue,
+              U: Unify<T>,
+              A: Apply<T, U>
+    {
+        if !self.reuse_data {
+            if let Some(idx) = goal.find_reused_datum(&mut HashSet::new()) {
+                return Err(InvalidPlan::ReusedData { idx: idx });
+            }
+        }
+        Result::Ok(())
     }
 }
 
@@ -412,7 +480,6 @@ pub struct Planner<'a, T, U, A>
     config: PlanningConfig,
     data: Vec<&'a U>,
     goal: Goal<T, U, A>,
-    max_increments: usize,
     total_increments: usize,
     rules: Vec<&'a A>,
 }
@@ -422,33 +489,14 @@ impl<'a, T, U, A> Planner<'a, T, U, A>
           U: 'a + Unify<T>,
           A: 'a + Apply<T, U>
 {
-    pub fn new(goal: &Goal<T, U, A>,
-               bindings: &Bindings<T>,
-               config: &PlanningConfig,
-               data: Vec<&'a U>,
-               rules: Vec<&'a A>,
-               max_increments: usize)
-               -> Planner<'a, T, U, A> {
+    pub fn new(goal: &Goal<T, U, A>, bindings: &Bindings<T>, config: &PlanningConfig, data: Vec<&'a U>, rules: Vec<&'a A>) -> Planner<'a, T, U, A> {
         Planner {
             bindings: bindings.clone(),
             config: config.clone(),
             data: data,
             goal: goal.clone(),
-            max_increments: max_increments,
             total_increments: 0,
             rules: rules,
-        }
-    }
-
-    pub fn validate(&self, goal: &Goal<T, U, A>, config: &PlanningConfig) -> Result<Bindings<T>, InvalidPlan> {
-        if !config.reuse_data {
-            if let Some(idx) = goal.find_reused_datum(&mut HashSet::new()) {
-                return Err(InvalidPlan::ReusedData { idx: idx });
-            }
-        }
-        match goal.satisified(&self.data, &self.rules, &self.bindings) {
-            Some(bindings) => Ok(bindings),
-            None => Err(InvalidPlan::BindingsConflict),
         }
     }
 }
@@ -461,15 +509,18 @@ impl<'a, T, U, A> Iterator for Planner<'a, T, U, A>
     type Item = (Goal<T, U, A>, Bindings<T>);
 
     fn next(&mut self) -> Option<(Goal<T, U, A>, Bindings<T>)> {
-        for i in self.total_increments..self.max_increments {
+        for _i in self.total_increments..self.config.max_increments {
             self.total_increments += 1;
 
-            if let Some(goal) = self.goal.increment(&self.data, &self.rules, i, self.config.max_depth) {
+            if let Some((increments, goal, bindings)) =
+                Goal::solve(&self.goal,
+                            &self.data,
+                            &self.rules,
+                            self.total_increments,
+                            &self.config) {
                 self.goal = goal;
-                match self.validate(&self.goal, &self.config) {
-                    Ok(bindings) => return Some((self.goal.clone(), bindings)),
-                    Err(_) => continue,
-                }
+                self.total_increments += increments;
+                return Some((self.goal.clone(), bindings.clone()));
             } else {
                 break;
             }
