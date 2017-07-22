@@ -2,7 +2,6 @@ use std;
 
 use itertools::Itertools;
 use itertools::FoldWhile::{Continue, Done};
-use permutohedron;
 
 macro_rules! assert_some_value {
 ($x:expr, $y:expr) => (match $x {
@@ -27,7 +26,7 @@ macro_rules! from_json {
 }
 
 /// Map across the iterator, terminating early if a mapping returns None
-pub fn filter_map_all<A, E>(iter: &mut Iterator<Item = E>, f: &Fn(E) -> Option<A>) -> Option<Vec<A>> {
+pub fn map_while_some<A, E>(iter: &mut Iterator<Item = E>, f: &Fn(E) -> Option<A>) -> Option<Vec<A>> {
     let mut results: Vec<A> = Vec::new();
     for x in iter {
         if let Some(result) = f(x) {
@@ -51,35 +50,6 @@ pub fn fold_while_ok<A, I, E: std::fmt::Debug>(init_acc: A, iter: &mut Iterator<
         Ok(value) => Continue(Ok(value)),
         Err(err) => Done(Err(err)),
     })
-}
-
-/*
-* Return a vector containing the values in `data` specifed by `indexes`.
-*/
-pub fn multi_index<T: Clone>(data: &Vec<T>, indexes: &Vec<usize>) -> Vec<T> {
-    let mut values: Vec<T> = Vec::with_capacity(indexes.len());
-    for idx in indexes {
-        match data.get(*idx) {
-            Some(value) => values.push(value.clone()),
-            None => {
-                panic!(format!("multi_index called with index: {} on vector of len {}",
-                               idx,
-                               data.len()))
-            }
-        }
-    }
-    values
-}
-
-pub fn permutations<T: Clone>(data: Vec<T>, n: usize) -> Vec<Vec<T>> {
-    let mut permutations: Vec<Vec<T>> = Vec::new();
-
-    for combination in data.into_iter().combinations(n) {
-        permutohedron::heap_recursive(combination.clone().as_mut_slice(),
-                                      |permutation| { permutations.push(permutation.to_vec()); });
-    }
-
-    permutations
 }
 
 pub fn display_graph(rendering: String, base_filename: String) {
@@ -108,24 +78,4 @@ pub fn display_graph(rendering: String, base_filename: String) {
                 .and_then(|_| Ok(()))
         })
         .unwrap()
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_multi_index() {
-        let v = vec![1, 2, 3, 4];
-        assert_eq!(super::multi_index(&v, &vec![0, 2]), vec![v[0], v[2]]);
-    }
-
-    #[test]
-    fn test_permutations() {
-        let v = vec![1, 2, 3];
-
-        let mut actual_permutations = super::permutations(v, 2);
-        let mut expected_permutations = vec![vec![1, 2], vec![1, 3], vec![2, 3], vec![2, 1], vec![3, 1], vec![3, 2]];
-        actual_permutations.sort();
-        expected_permutations.sort();
-        assert_eq!(actual_permutations, expected_permutations);
-    }
 }

@@ -1,14 +1,10 @@
-use std::collections::{BTreeSet, HashMap};
-use std::fmt::{Debug, Display, Formatter, Result};
-use std::iter::{Extend, FromIterator};
-
-use serde::{Deserialize, Serialize};
-
 #[cfg(feature = "with-constraint")]
 use constraints;
 
-#[cfg(test)]
-mod tests;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeSet, HashMap};
+use std::fmt::{Debug, Display, Formatter, Result};
+use std::iter::{Extend, FromIterator};
 
 pub trait BindingsValue
     : Clone + Debug + Default + Deserialize + Display + Eq + PartialEq + PartialOrd + Serialize
@@ -204,4 +200,17 @@ pub trait Apply<T: BindingsValue, U: Unify<T>>
     fn constraints<'a>(&'a self) -> Vec<&'a constraints::Constraint>;
     fn r_apply(&self, &U, &Bindings<T>) -> Option<(Vec<U>, Bindings<T>)>;
     fn snowflake(&self, String) -> Self;
+
+    fn input_patterns(&self) -> Vec<U> {
+        Vec::new()
+    }
+    fn apply_match(&self, _bindings: &Bindings<T>) -> Option<Vec<U>> {
+        None
+    }
+    fn r_apply_match(&self, _fact: &U) -> Option<Vec<U>> {
+        None
+    }
 }
+
+#[cfg(test)]
+mod tests;

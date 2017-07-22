@@ -25,6 +25,21 @@ impl<T, U> Apply<T, U> for Rule<T, U>
         self.lhs.len()
     }
 
+    fn input_patterns(&self) -> Vec<U> {
+        self.lhs.clone()
+    }
+
+    fn apply_match(&self, bindings: &Bindings<T>) -> Option<Vec<U>> {
+        self.solve_constraints(&bindings).and_then(|bindings| self.rhs.apply_bindings(&bindings).and_then(|bound_rhs| Some(vec![bound_rhs])))
+    }
+
+    fn r_apply_match(&self, fact: &U) -> Option<Vec<U>> {
+        self.rhs
+            .unify(fact, &Bindings::new())
+            .and_then(|bindings| self.solve_constraints(&bindings))
+            .and_then(|bindings| utils::map_while_some(&mut self.lhs.iter(), &|f| f.apply_bindings(&bindings)))
+    }
+
     fn apply(&self, facts: &Vec<&U>, bindings: &Bindings<T>) -> Option<(U, Bindings<T>)> {
         self.unify(facts, bindings)
             .and_then(|bindings| self.solve_constraints(&bindings))
@@ -42,7 +57,7 @@ impl<T, U> Apply<T, U> for Rule<T, U>
                 bound_rhs.unify(&fact, bindings)
                     .and_then(|bindings| self.solve_constraints(&bindings))
                     .and_then(|bindings| {
-                        utils::filter_map_all(&mut self.lhs.iter(), &|f| f.apply_bindings(&bindings))
+                        utils::map_while_some(&mut self.lhs.iter(), &|f| f.apply_bindings(&bindings))
                             .and_then(|bound_lhs| Some((bound_lhs, bindings.clone())))
                     })
             })

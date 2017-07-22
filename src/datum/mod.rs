@@ -199,7 +199,7 @@ impl core::Unify<Datum> for Datum {
 
     fn apply_bindings(&self, bindings: &core::Bindings<Self>) -> Option<Self> {
         fn apply_bindings_to_args(args: &Vec<Datum>, bindings: &core::Bindings<Datum>) -> Option<Vec<Datum>> {
-            utils::filter_map_all(&mut args.iter(), &|arg| arg.apply_bindings(bindings))
+            utils::map_while_some(&mut args.iter(), &|arg| arg.apply_bindings(bindings))
         }
         match *self {
             Datum::Variable(ref var_name) => bindings.get_binding(var_name).or_else(|| Some(self.clone())),

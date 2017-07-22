@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use core::Bindings;
 use datum::Datum;
-use infer::InferenceEngine;
+use infer::{chain_forward_with_negative_goals, InferenceEngine, Negatable, OriginCache};
 use pedigree::{InferenceChain, Origin};
 use rule::Rule;
 
@@ -84,12 +84,12 @@ fn test_chain_until_match() {
         .collect();
 
     let f_id = "fact-0".to_string();
-    let f = from_json!(Datum, {"vec": [{"str": "current-value"}, {"float": 0}]});
+    let f = from_json!(Datum, {"vec": [{"str": "current-value"}, {"float": 0.0}]});
     let facts: BTreeMap<&String, &Datum> = vec![(&f_id, &f)]
         .into_iter()
         .collect();
 
-    let goal = from_json!(Datum, {"vec": [{"str": "current-value"}, {"float": 4}]});
+    let goal = from_json!(Datum, {"vec": [{"str": "current-value"}, {"float": 4.0}]});
     let engine = InferenceEngine::new("test".to_string(), rules, facts);
     let (result, _engine) = engine.chain_until_match(4, &goal);
     assert_eq!(result.is_some(), true);
@@ -139,9 +139,6 @@ fn test_chain_until_match_updates_pedigree() {
     assert_eq!(result.is_some(), true);
     let (target_fact, target_fact_id) = result.unwrap();
     assert_eq!(target_fact, goal);
-    println!("\n");
-    println!("Target fact: {}", target_fact);
-    println!("Goal       : {}", goal);
 
     let test_id_0 = "test-0".to_string();
     let test_0_origin = Origin {
@@ -169,4 +166,39 @@ fn test_chain_until_match_updates_pedigree() {
                        (vec![(add_one_id.clone(), None), (f_id.clone(), None)])],
     };
     assert_eq!(inference_chain, expected_inference_chain);
+}
+
+#[test]
+fn test_chain_forward_with_negative_goals() {
+    let rules = from_json!(Vec<Rule<Datum, Negatable<Datum, Datum>>>, [
+      {
+        "lhs": [
+          {"content": {"vec": [{"str": "current-value"}, {"var": "?x"}]}},
+          {"content": {"vec": [{"str": "even-value"}, {"var": "?x"}]}, "is_negative": true},
+        ],
+        "rhs": {"content": {"vec": [{"str": "odd-value"}, {"var": "?x"}]}},
+      },
+    ]);
+    let data = from_json!(Vec<Negatable<Datum, Datum>>, [
+          {"content": {"vec": [{"str": "current-value"}, {"int": 0}]}},
+          {"content": {"vec": [{"str": "even-value"}, {"int": 0}]}},
+          {"content": {"vec": [{"str": "current-value"}, {"int": 1}]}},
+          {"content": {"vec": [{"str": "current-value"}, {"int": 2}]}},
+          {"content": {"vec": [{"str": "even-value"}, {"int": 2}]}},
+          {"content": {"vec": [{"str": "current-value"}, {"int": 3}]}},
+      ]);
+    let expected_derived_facts = from_json!(Vec<Negatable<Datum, Datum>>, [
+          {"content": {"vec": [{"str": "odd-value"}, {"int": 1}]}},
+          {"content": {"vec": [{"str": "odd-value"}, {"int": 3}]}},
+    ]);
+
+    let data_ids = vec!["d0".to_string(), "d1".to_string(), "d2".to_string(), "d3".to_string(), "d4".to_string(), "d5".to_string()];
+    let data_with_ids: Vec<(&String, &Negatable<Datum, Datum>)> = data_ids.iter()
+        .zip(data.iter())
+        .collect();
+    let rule_ids = vec!["r0".to_string()];
+    let rules_with_ids: Vec<(&String, &Rule<Datum, Negatable<Datum, Datum>>)> = rule_ids.iter().zip(rules.iter()).collect();
+    let results = chain_forward_with_negative_goals(data_with_ids, rules_with_ids, &mut OriginCache::new());
+    let derived_facts: Vec<Negatable<Datum, Datum>> = results.into_iter().map(|(f, _, _)| f).collect();
+    assert_eq!(derived_facts, expected_derived_facts);
 }
