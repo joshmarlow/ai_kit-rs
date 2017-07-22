@@ -19,6 +19,36 @@ pub enum UnificationIndex {
     Exhausted,
 }
 
+impl UnificationIndex {
+    pub fn datum_idx(&self) -> Option<usize> {
+        match *self {
+            UnificationIndex::Datum(datum_idx) => Some(datum_idx),
+            _ => None,
+        }
+    }
+
+    pub fn actor_idx(&self) -> Option<usize> {
+        match *self {
+            UnificationIndex::Actor(actor_idx) => Some(actor_idx),
+            _ => None,
+        }
+    }
+
+    pub fn is_exhausted(&self) -> bool {
+        match *self {
+            UnificationIndex::Exhausted => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_init(&self) -> bool {
+        match *self {
+            UnificationIndex::Init => true,
+            _ => false,
+        }
+    }
+}
+
 impl std::fmt::Display for UnificationIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
@@ -513,7 +543,7 @@ impl<'a, T, U, A> Planner<'a, T, U, A>
           U: 'a + Unify<T>,
           A: 'a + Apply<T, U>
 {
-    pub fn new(goal: &Goal<T, U, A>, bindings: &Bindings<T>, config: &PlanningConfig, data: Vec<&'a U>, rules: Vec<&'a A>) -> Planner<'a, T, U, A> {
+    pub fn new(goal: &Goal<T, U, A>, bindings: &Bindings<T>, config: &PlanningConfig, data: Vec<&'a U>, rules: Vec<&'a A>) -> Self {
         Planner {
             bindings: bindings.clone(),
             config: config.clone(),
@@ -545,6 +575,64 @@ impl<'a, T, U, A> Iterator for Planner<'a, T, U, A>
                 self.goal = goal;
                 self.total_increments += increments;
                 return Some((self.goal.clone(), bindings.clone()));
+            } else {
+                break;
+            }
+        }
+        None
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConjunctivePlanner<'a, T, U, A>
+    where T: ConstraintValue,
+          U: 'a + Unify<T>,
+          A: 'a + Apply<T, U>
+{
+    bindings: Bindings<T>,
+    config: PlanningConfig,
+    data: Vec<&'a U>,
+    goals: Vec<Goal<T, U, A>>,
+    total_increments: usize,
+    rules: Vec<&'a A>,
+}
+
+impl<'a, T, U, A> ConjunctivePlanner<'a, T, U, A>
+    where T: ConstraintValue,
+          U: 'a + Unify<T>,
+          A: 'a + Apply<T, U>
+{
+    pub fn new(goals: Vec<Goal<T, U, A>>, bindings: &Bindings<T>, config: &PlanningConfig, data: Vec<&'a U>, rules: Vec<&'a A>) -> Self {
+        ConjunctivePlanner {
+            bindings: bindings.clone(),
+            config: config.clone(),
+            data: data,
+            goals: goals,
+            total_increments: 0,
+            rules: rules,
+        }
+    }
+}
+
+impl<'a, T, U, A> Iterator for ConjunctivePlanner<'a, T, U, A>
+    where T: ConstraintValue,
+          U: 'a + Unify<T>,
+          A: 'a + Apply<T, U>
+{
+    type Item = (Vec<Goal<T, U, A>>, Bindings<T>);
+
+    fn next(&mut self) -> Option<(Vec<Goal<T, U, A>>, Bindings<T>)> {
+        for _i in self.total_increments..self.config.max_increments {
+            self.total_increments += 1;
+
+            if let Some((goals, bindings)) =
+                Goal::solve_conjunction(self.goals.iter().collect(),
+                                        &self.data,
+                                        &self.rules,
+                                        self.total_increments,
+                                        &self.config) {
+                self.goals = goals;
+                return Some((self.goals.clone(), bindings.clone()));
             } else {
                 break;
             }
