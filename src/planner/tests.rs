@@ -691,7 +691,6 @@ mod solve_tests {
             .set_binding(&"?s2".to_string(), Datum::Float(2.0))
             .set_binding(&"?t2".to_string(), Datum::Float(2.0));
 
-        println!("\n");
         let solved_goals = Goal::solve_conjunction(goals.iter().collect(),
                                                    &data.iter().collect(),
                                                    &Vec::new(),
@@ -699,11 +698,6 @@ mod solve_tests {
                                                    &PlanningConfig::default());
         assert_eq!(solved_goals.is_some(), true);
         let (solved_goals, bindings) = solved_goals.unwrap();
-        for idx in 0..solved_goals.len() {
-            println!("idx: {}\n", idx);
-            println!("\tExpected: {}", expected_solved_goals[idx]);
-            println!("\tActual:   {}", solved_goals[idx]);
-        }
         assert_eq!(solved_goals, expected_solved_goals);
         assert_eq!(bindings, expected_bindings);
     }

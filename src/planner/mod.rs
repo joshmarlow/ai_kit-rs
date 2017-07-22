@@ -427,7 +427,7 @@ impl<T, U, A> std::fmt::Display for Goal<T, U, A>
           A: Apply<T, U>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        write!(f, "Goal tree:\n{}", self.pprint(1, false))
+        write!(f, "Goal tree:\n{}", self.pprint(1, true))
     }
 }
 
