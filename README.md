@@ -70,18 +70,13 @@ Feature `with-datum`.
 
 The `datum::Datum` structure implements the `BindingsValue` and `Unify` traits.
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialOrd)]
-
+	#[derive(Clone, Debug, Serialize, Deserialize, PartialOrd)]
 	pub enum Datum {
 	    Nil,
 	    String(String),
 	    Int(i64),
 	    Float(f64),
 	    Variable(String),
-	    Compound {
-	        head: Box<Datum>,
-	        args: Vec<Datum>,
-	    },
 	    Vector(Vec<Datum>),
 	}
 
@@ -90,6 +85,14 @@ The `datum::Datum` structure implements the `BindingsValue` and `Unify` traits.
 Feature `with-rule`.
 
 The `rule::Rule` structure implements the `Operation` trait.
+
+	#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+	pub struct Rule<T: ConstraintValue, U: Unify<T>> {
+	    pub constraints: Vec<Constraint>,
+	    pub lhs: Vec<U>,
+	    pub rhs: U,
+	    _marker: PhantomData<T>,
+	}
 
 Feature Matrix
 ==============
