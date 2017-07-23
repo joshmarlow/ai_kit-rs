@@ -329,7 +329,7 @@ impl<T, U, A> Goal<T, U, A>
                            snowflake_prefix_id: usize,
                            max_depth: usize)
                            -> Option<Vec<Self>> {
-        rule.r_apply(r_pattern, &Bindings::new()).and_then(|(subgoal_patterns, bindings)| {
+        rule.r_apply_match(r_pattern).and_then(|(subgoal_patterns, bindings)| {
             let subgoals: Vec<Option<Self>> = subgoal_patterns.into_iter()
                 .map(|pattern| {
                     Goal::new(pattern.apply_bindings(&bindings).unwrap(),

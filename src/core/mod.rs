@@ -194,11 +194,9 @@ pub trait Unify<T: BindingsValue>
 pub trait Apply<T: BindingsValue, U: Unify<T>>
     : Clone + Debug + Display + Eq + PartialEq + Deserialize + Serialize {
     fn arg_count(&self) -> usize;
-    fn apply(&self, &Vec<&U>, &Bindings<T>) -> Option<(U, Bindings<T>)>;
     // NOTE: replace constraints with validate_bindings?
     #[cfg(feature = "with-constraint")]
     fn constraints<'a>(&'a self) -> Vec<&'a constraints::Constraint>;
-    fn r_apply(&self, &U, &Bindings<T>) -> Option<(Vec<U>, Bindings<T>)>;
     fn snowflake(&self, String) -> Self;
 
     fn input_patterns(&self) -> Vec<U> {
@@ -207,7 +205,7 @@ pub trait Apply<T: BindingsValue, U: Unify<T>>
     fn apply_match(&self, _bindings: &Bindings<T>) -> Option<Vec<U>> {
         None
     }
-    fn r_apply_match(&self, _fact: &U) -> Option<Vec<U>> {
+    fn r_apply_match(&self, _fact: &U) -> Option<(Vec<U>, Bindings<T>)> {
         None
     }
 }
