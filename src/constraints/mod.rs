@@ -1,12 +1,13 @@
+
+
+pub use self::numerical::*;
+
+use core::{Bindings, BindingsValue};
 use serde_json;
 use std;
 use std::collections::HashMap;
 use std::ops::{Add, Div, Mul, Sub};
-
-use core::{Bindings, BindingsValue};
 use utils;
-
-pub use self::numerical::*;
 mod numerical;
 
 pub use self::symbolic::*;

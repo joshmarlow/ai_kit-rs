@@ -1,10 +1,11 @@
-use std::collections::BTreeMap;
+
 
 use core::Bindings;
 use datum::Datum;
 use infer::{chain_forward_with_negative_goals, InferenceEngine, Negatable, OriginCache};
 use pedigree::{InferenceChain, Origin};
 use rule::Rule;
+use std::collections::BTreeMap;
 
 #[test]
 fn test_forward_chain() {

@@ -1,6 +1,6 @@
+use super::*;
 use serde_json;
 use std;
-use super::*;
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub struct Number {

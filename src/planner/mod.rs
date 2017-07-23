@@ -1,7 +1,7 @@
 use constraints::{Constraint, ConstraintValue};
 use core::{Operation, Bindings, Unify};
-use itertools::Itertools;
 use itertools::FoldWhile::{Continue, Done};
+use itertools::Itertools;
 use std;
 use std::collections::HashSet;
 use std::marker::PhantomData;

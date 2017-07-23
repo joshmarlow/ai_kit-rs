@@ -1,8 +1,8 @@
+use itertools::Itertools;
 use serde_json;
 use std;
 use std::collections::btree_map::BTreeMap;
 use std::collections::btree_set::BTreeSet;
-use itertools::Itertools;
 
 #[cfg(test)]
 mod tests;

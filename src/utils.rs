@@ -1,7 +1,7 @@
-use std;
+use itertools::FoldWhile::{Continue, Done};
 
 use itertools::Itertools;
-use itertools::FoldWhile::{Continue, Done};
+use std;
 
 macro_rules! assert_some_value {
 ($x:expr, $y:expr) => (match $x {

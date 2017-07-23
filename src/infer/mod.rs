@@ -5,8 +5,8 @@ use planner::{Goal, ConjunctivePlanner, PlanningConfig};
 use serde_json;
 use std;
 use std::collections::{BTreeMap, BTreeSet};
-use std::marker::PhantomData;
 use std::collections::HashMap;
+use std::marker::PhantomData;
 use utils;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]

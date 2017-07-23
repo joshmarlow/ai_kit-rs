@@ -1,6 +1,6 @@
-use std::str;
-use datum::*;
 use super::super::core::{Bindings, Unify};
+use datum::*;
+use std::str;
 extern crate serde_json;
 
 #[test]

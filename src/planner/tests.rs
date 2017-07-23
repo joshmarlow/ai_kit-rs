@@ -1,6 +1,6 @@
+use super::*;
 use datum::Datum;
 use rule::Rule;
-use super::*;
 
 /// Recursively compares the 'spines' of two goal trees
 /// where the 'spine' is the goal pattern and the unification indexes, as well as the number of subgoals
