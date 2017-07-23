@@ -7,7 +7,7 @@ use std::collections::btree_set::BTreeSet;
 #[cfg(test)]
 mod tests;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum RenderType {
     Full,
     Pedigree,

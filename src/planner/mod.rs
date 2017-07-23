@@ -7,7 +7,7 @@ use std::collections::HashSet;
 use std::marker::PhantomData;
 use utils;
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum UnificationIndex {
     #[serde(rename="init")]
     Init,
@@ -485,7 +485,7 @@ impl<T, U, A> std::fmt::Display for Goal<T, U, A>
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PlanningConfig {
     pub max_depth: usize,
     pub max_increments: usize,
@@ -514,11 +514,11 @@ impl PlanningConfig {
                 return Err(InvalidPlan::ReusedData { idx: idx });
             }
         }
-        Result::Ok(())
+        Ok(())
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum InvalidPlan {
     BindingsConflict,
     ReusedData { idx: usize },
