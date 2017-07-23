@@ -1,5 +1,5 @@
 use constraints::{Constraint, ConstraintValue};
-use core::{Apply, Bindings, Unify};
+use core::{Operation, Bindings, Unify};
 use serde_json;
 use std;
 use std::collections::HashMap;
@@ -17,7 +17,7 @@ pub struct Rule<T: ConstraintValue, U: Unify<T>> {
     _marker: PhantomData<T>,
 }
 
-impl<T, U> Apply<T, U> for Rule<T, U>
+impl<T, U> Operation<T, U> for Rule<T, U>
     where T: ConstraintValue,
           U: Unify<T>
 {

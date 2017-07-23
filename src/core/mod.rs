@@ -191,7 +191,7 @@ pub trait Unify<T: BindingsValue>
     }
 }
 
-pub trait Apply<T: BindingsValue, U: Unify<T>>
+pub trait Operation<T: BindingsValue, U: Unify<T>>
     : Clone + Debug + Display + Eq + PartialEq + Deserialize + Serialize {
     fn arg_count(&self) -> usize;
     // NOTE: replace constraints with validate_bindings?

@@ -1,5 +1,5 @@
 use constraints::{Constraint, ConstraintValue};
-use core::{Apply, Bindings, Unify};
+use core::{Operation, Bindings, Unify};
 use itertools::Itertools;
 use itertools::FoldWhile::{Continue, Done};
 use std;
@@ -128,7 +128,7 @@ pub fn first_goal_to_increment(unification_indices: &Vec<UnificationIndex>) -> O
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct Goal<T: ConstraintValue, U: Unify<T>, A: Apply<T, U>> {
+pub struct Goal<T: ConstraintValue, U: Unify<T>, A: Operation<T, U>> {
     #[serde(default)]
     pub bindings_at_creation: Bindings<T>,
     #[serde(default="Vec::new")]
@@ -149,7 +149,7 @@ pub struct Goal<T: ConstraintValue, U: Unify<T>, A: Apply<T, U>> {
 impl<T, U, A> Goal<T, U, A>
     where T: ConstraintValue,
           U: Unify<T>,
-          A: Apply<T, U>
+          A: Operation<T, U>
 {
     pub fn new(pattern: U,
                parental_constraints: Vec<Constraint>,
@@ -478,7 +478,7 @@ impl<T, U, A> Goal<T, U, A>
 impl<T, U, A> std::fmt::Display for Goal<T, U, A>
     where T: ConstraintValue,
           U: Unify<T>,
-          A: Apply<T, U>
+          A: Operation<T, U>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         write!(f, "Goal tree:\n{}", self.pprint(1, true))
@@ -507,7 +507,7 @@ impl PlanningConfig {
     pub fn validate_plan<T, U, A>(&self, goal: &Goal<T, U, A>) -> Result<(), InvalidPlan>
         where T: ConstraintValue,
               U: Unify<T>,
-              A: Apply<T, U>
+              A: Operation<T, U>
     {
         if !self.reuse_data {
             if let Some(idx) = goal.find_reused_datum(&mut HashSet::new()) {
@@ -528,7 +528,7 @@ pub enum InvalidPlan {
 pub struct Planner<'a, T, U, A>
     where T: ConstraintValue,
           U: 'a + Unify<T>,
-          A: 'a + Apply<T, U>
+          A: 'a + Operation<T, U>
 {
     bindings: Bindings<T>,
     config: PlanningConfig,
@@ -541,7 +541,7 @@ pub struct Planner<'a, T, U, A>
 impl<'a, T, U, A> Planner<'a, T, U, A>
     where T: ConstraintValue,
           U: 'a + Unify<T>,
-          A: 'a + Apply<T, U>
+          A: 'a + Operation<T, U>
 {
     pub fn new(goal: &Goal<T, U, A>, bindings: &Bindings<T>, config: &PlanningConfig, data: Vec<&'a U>, rules: Vec<&'a A>) -> Self {
         Planner {
@@ -558,7 +558,7 @@ impl<'a, T, U, A> Planner<'a, T, U, A>
 impl<'a, T, U, A> Iterator for Planner<'a, T, U, A>
     where T: ConstraintValue,
           U: 'a + Unify<T>,
-          A: 'a + Apply<T, U>
+          A: 'a + Operation<T, U>
 {
     type Item = (Goal<T, U, A>, Bindings<T>);
 
@@ -587,7 +587,7 @@ impl<'a, T, U, A> Iterator for Planner<'a, T, U, A>
 pub struct ConjunctivePlanner<'a, T, U, A>
     where T: ConstraintValue,
           U: 'a + Unify<T>,
-          A: 'a + Apply<T, U>
+          A: 'a + Operation<T, U>
 {
     bindings: Bindings<T>,
     config: PlanningConfig,
@@ -600,7 +600,7 @@ pub struct ConjunctivePlanner<'a, T, U, A>
 impl<'a, T, U, A> ConjunctivePlanner<'a, T, U, A>
     where T: ConstraintValue,
           U: 'a + Unify<T>,
-          A: 'a + Apply<T, U>
+          A: 'a + Operation<T, U>
 {
     pub fn new(goals: Vec<Goal<T, U, A>>, bindings: &Bindings<T>, config: &PlanningConfig, data: Vec<&'a U>, rules: Vec<&'a A>) -> Self {
         ConjunctivePlanner {
@@ -617,7 +617,7 @@ impl<'a, T, U, A> ConjunctivePlanner<'a, T, U, A>
 impl<'a, T, U, A> Iterator for ConjunctivePlanner<'a, T, U, A>
     where T: ConstraintValue,
           U: 'a + Unify<T>,
-          A: 'a + Apply<T, U>
+          A: 'a + Operation<T, U>
 {
     type Item = (Vec<Goal<T, U, A>>, Bindings<T>);
 

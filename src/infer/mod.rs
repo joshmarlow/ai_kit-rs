@@ -1,5 +1,5 @@
 use constraints::ConstraintValue;
-use core::{Apply, Bindings, BindingsValue, Unify};
+use core::{Operation, Bindings, BindingsValue, Unify};
 use pedigree::{Origin, Pedigree, RenderType};
 use planner::{Goal, ConjunctivePlanner, PlanningConfig};
 use serde_json;
@@ -94,7 +94,7 @@ impl OriginCache {
 pub struct InferenceEngine<'a, T, U, A>
     where T: 'a + ConstraintValue,
           U: 'a + Unify<T>,
-          A: 'a + Apply<T, U>
+          A: 'a + Operation<T, U>
 {
     pub rules: BTreeMap<&'a String, &'a A>,
     pub facts: BTreeMap<&'a String, &'a U>,
@@ -111,7 +111,7 @@ pub struct InferenceEngine<'a, T, U, A>
 impl<'a, T, U, A> InferenceEngine<'a, T, U, A>
     where T: 'a + ConstraintValue,
           U: 'a + Unify<T>,
-          A: 'a + Apply<T, U>
+          A: 'a + Operation<T, U>
 {
     pub fn new(prefix: String, rules: BTreeMap<&'a String, &'a A>, facts: BTreeMap<&'a String, &'a U>) -> Self {
         InferenceEngine {
@@ -193,7 +193,7 @@ impl<'a, T, U, A> InferenceEngine<'a, T, U, A>
 pub fn chain_forward<T, U, A>(facts: Vec<(&String, &U)>, rules: Vec<(&String, &A)>, origin_cache: &mut OriginCache) -> Vec<(U, Bindings<T>, Origin)>
     where T: ConstraintValue,
           U: Unify<T>,
-          A: Apply<T, U>
+          A: Operation<T, U>
 {
     let mut derived_facts: Vec<(U, Bindings<T>, Origin)> = Vec::new();
     let just_the_facts: Vec<&U> = facts.iter().map(|&(_id, u)| u).collect();
@@ -239,7 +239,7 @@ pub fn chain_forward_with_negative_goals<T, IU, A>(facts: Vec<(&String, &Negatab
                                                    -> Vec<(Negatable<T, IU>, Bindings<T>, Origin)>
     where T: ConstraintValue,
           IU: Unify<T>,
-          A: Apply<T, Negatable<T, IU>>
+          A: Operation<T, Negatable<T, IU>>
 {
     let mut derived_facts: Vec<(Negatable<T, IU>, Bindings<T>, Origin)> = Vec::new();
     let just_the_facts: Vec<&Negatable<T, IU>> = facts.iter().map(|&(_id, u)| u).collect();
@@ -298,7 +298,7 @@ fn any_patterns_match<B, U>(patterns: &Vec<&U>, patterns2: &Vec<&U>) -> bool
 fn extract_datum_indexes<T, U, A>(goals: &Vec<Goal<T, U, A>>) -> Vec<usize>
     where T: ConstraintValue,
           U: Unify<T>,
-          A: Apply<T, U>
+          A: Operation<T, U>
 {
     goals.iter().map(|goal| goal.unification_index.datum_idx().expect("Only datum idx should be here!")).collect()
 }
