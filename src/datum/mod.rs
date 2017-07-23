@@ -21,32 +21,11 @@ pub enum Datum {
     Float(f64),
     #[serde(rename="var")]
     Variable(String),
-    #[serde(rename="compound")]
-    Compound {
-        #[serde(rename="head")]
-        head: Box<Datum>,
-        #[serde(rename="args")]
-        args: Vec<Datum>,
-    },
     #[serde(rename="vec")]
     Vector(Vec<Datum>),
 }
 
 impl Datum {
-    pub fn is_compound(&self) -> bool {
-        match *self {
-            Datum::Compound { head: ref _head, args: ref _args } => true,
-            _ => false,
-        }
-    }
-
-    pub fn head<'a>(&'a self) -> Option<&'a Box<Datum>> {
-        match *self {
-            Datum::Compound { ref head, args: ref _args } => Some(head),
-            _ => None,
-        }
-    }
-
     pub fn to_string(&self) -> Option<String> {
         match *self {
             Datum::String(ref value) => Some(value.clone()),
@@ -110,12 +89,6 @@ impl PartialEq for Datum {
                     _ => false,
                 }
             }
-            Datum::Compound { ref head, ref args } => {
-                match *other {
-                    Datum::Compound { head: ref head2, args: ref args2 } => head == head2 && args == args2,
-                    _ => false,
-                }
-            }
             Datum::Vector(ref args) => {
                 match *other {
                     Datum::Vector(ref args2) => args == args2,
@@ -168,15 +141,6 @@ impl core::Unify<Datum> for Datum {
         }
         match *self {
             Datum::Variable(ref var_name) => bindings.update_bindings(var_name, other),
-            Datum::Compound { ref head, ref args } => {
-                match *other {
-                    Datum::Compound { head: ref head2, args: ref args2 } if args.len() == args2.len() => {
-                        head.unify(&head2, bindings).and_then(|bindings| unify_args(args, args2, &bindings))
-                    }
-                    Datum::Variable(ref var_name) => bindings.update_bindings(var_name, self),
-                    _ => None,
-                }
-            }
             Datum::Vector(ref args) => {
                 match *other {
                     Datum::Vector(ref args2) if args.len() == args2.len() => unify_args(args, args2, &bindings),
@@ -204,16 +168,6 @@ impl core::Unify<Datum> for Datum {
         }
         match *self {
             Datum::Variable(ref var_name) => bindings.get_binding(var_name).or_else(|| Some(self.clone())),
-            Datum::Compound { ref head, ref args } => {
-                head.apply_bindings(bindings).and_then(|bound_head| {
-                    apply_bindings_to_args(args, bindings).and_then(|bound_args| {
-                        Some(Datum::Compound {
-                            head: Box::new(bound_head),
-                            args: bound_args,
-                        })
-                    })
-                })
-            }
             Datum::Vector(ref args) => apply_bindings_to_args(args, bindings).and_then(|args| Some(Datum::Vector(args))),
             _ => Some(self.clone()),
         }
@@ -222,13 +176,6 @@ impl core::Unify<Datum> for Datum {
     fn variables(&self) -> Vec<String> {
         match *self {
             Datum::Variable(ref v) => vec![v.clone()],
-            Datum::Compound { ref head, ref args } => {
-                let mut variables = head.variables();
-                for arg in args.iter() {
-                    variables.extend(arg.variables().into_iter());
-                }
-                variables
-            }
             Datum::Vector(ref args) => {
                 let mut variables = Vec::new();
                 for arg in args.iter() {
@@ -243,7 +190,6 @@ impl core::Unify<Datum> for Datum {
     fn get_variable(&self, q: &String) -> Option<&Self> {
         match *self {
             Datum::Variable(ref v) if v == q => Some(self),
-            Datum::Compound { ref head, ref args } => head.get_variable(q).or_else(|| args.iter().filter_map(|arg| arg.get_variable(q)).next()),
             Datum::Vector(ref args) => args.iter().filter_map(|arg| arg.get_variable(q)).next(),
             _ => None,
         }
@@ -256,12 +202,6 @@ impl core::Unify<Datum> for Datum {
                     .and_then(|new_v| Some(Datum::Variable(new_v.clone())))
                     .or_else(|| Some(self.clone()))
                     .unwrap()
-            }
-            Datum::Compound { ref head, ref args } => {
-                Datum::Compound {
-                    head: Box::new(head.rename_variables(renamed_variables)),
-                    args: args.iter().map(|arg| arg.rename_variables(renamed_variables)).collect(),
-                }
             }
             Datum::Vector(ref args) => Datum::Vector(args.iter().map(|arg| arg.rename_variables(renamed_variables)).collect()),
             _ => self.clone(),

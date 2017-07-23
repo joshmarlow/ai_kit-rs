@@ -25,15 +25,6 @@ macro_rules! datum_json {
 }
 
 #[test]
-fn test_round_trip_json_serialization() {
-    let s = r#"{"compound":{"head":{"str":"isa"},"args":[{"str":"man"},{"str":"mortal"}]}}"#;
-
-    let d: Datum = serde_json::from_str(&s).unwrap();
-    let sd = serde_json::to_string(&d).unwrap();
-    assert_eq!(sd, s);
-}
-
-#[test]
 fn test_unify_passes_when_variables_match() {
     let d = from_json!(Datum, {
         "vec": [{"str": "action"}, {"int": 1}, {"var": "?::t1"}]
