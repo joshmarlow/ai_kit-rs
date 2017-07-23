@@ -279,13 +279,5 @@ impl std::fmt::Display for Datum {
     }
 }
 
-macro_rules! datum_json {
-    ($json: tt) => ({
-        use serde_json;
-        let d: Datum = serde_json::from_value(json!($json)).expect("Expected json decoding");
-        d
-    })
-}
-
 #[cfg(test)]
 mod tests;

@@ -3,21 +3,21 @@
 
 extern crate itertools;
 extern crate serde;
+#[allow(unused_imports)]
 #[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
 extern crate uuid;
 
+#[cfg(test)]
 #[macro_use]
-pub mod utils;
+mod test_utils;
 #[cfg(feature = "with-constraint")]
-#[macro_use]
 pub mod constraints;
 #[macro_use]
 pub mod core;
 #[cfg(feature = "with-datum")]
-#[macro_use]
 pub mod datum;
 #[cfg(feature = "with-forward-inference")]
 pub mod infer;
@@ -27,3 +27,4 @@ pub mod pedigree;
 pub mod planner;
 #[cfg(feature = "with-rule")]
 pub mod rule;
+pub mod utils;

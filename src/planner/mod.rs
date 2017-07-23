@@ -641,13 +641,5 @@ impl<'a, T, U, A> Iterator for ConjunctivePlanner<'a, T, U, A>
     }
 }
 
-macro_rules! goal_json {
-    ($type: ty, $json: tt) => ({
-        use serde_json;
-        let g: $type = serde_json::from_value(json!($json)).expect("Expected json decoding");
-        g
-    })
-}
-
 #[cfg(test)]
 mod tests;
