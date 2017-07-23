@@ -199,11 +199,11 @@ pub fn chain_forward<T, U, A>(facts: Vec<(&String, &U)>, rules: Vec<(&String, &A
     let just_the_facts: Vec<&U> = facts.iter().map(|&(_id, u)| u).collect();
 
     for (ref rule_id, ref rule) in rules.into_iter() {
-        let mut planner: ConjunctivePlanner<T, U, A> = ConjunctivePlanner::new(rule.input_patterns().into_iter().map(Goal::with_pattern).collect(),
-                                                                               &Bindings::new(),
-                                                                               &PlanningConfig::default(),
-                                                                               just_the_facts.clone(),
-                                                                               Vec::new());
+        let planner: ConjunctivePlanner<T, U, A> = ConjunctivePlanner::new(rule.input_patterns().into_iter().map(Goal::with_pattern).collect(),
+                                                                           &Bindings::new(),
+                                                                           &PlanningConfig::default(),
+                                                                           just_the_facts.clone(),
+                                                                           Vec::new());
 
         let application_successful =
             |(input_goals, bindings): (Vec<Goal<T, U, A>>, Bindings<T>)| -> Option<(Vec<Goal<T, U, A>>, Vec<U>, Bindings<T>)> {
@@ -247,7 +247,7 @@ pub fn chain_forward_with_negative_goals<T, IU, A>(facts: Vec<(&String, &Negatab
     for (ref rule_id, ref rule) in rules.into_iter() {
         let (negative_inputs, positive_inputs): (Vec<Negatable<T, IU>>, Vec<Negatable<T, IU>>) =
             rule.input_patterns().into_iter().partition(|input| input.is_negative);
-        let mut planner: ConjunctivePlanner<T, Negatable<T, IU>, A> =
+        let planner: ConjunctivePlanner<T, Negatable<T, IU>, A> =
             ConjunctivePlanner::new(positive_inputs.into_iter().map(Goal::with_pattern).collect(),
                                     &Bindings::new(),
                                     &PlanningConfig::default(),
