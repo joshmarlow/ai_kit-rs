@@ -14,15 +14,12 @@ All of the algorithms (documented below) operate on several core traits, `Bindin
 Quick examples are provided before, followed by more in-depth documentation.
 
 Quick examples
-=============
-=============
+==============
 
 Sudoku Solver
 =============
-=============
 
 Core
-====
 ====
 
 `Bindings` - similar to a key/value lookup, but with utilities for ensuring that two (or more) keys have the same value.
@@ -36,52 +33,36 @@ This is used for implementing [Forward](#forward-inference) and [Backward](#back
 
 Algorithms
 ==========
-==========
 
 Constraints
 ===========
-===========
-===========
 
 Forward Inference
-=================
-=================
 =================
 
 Feature `with-forward-inference`
 
 Backward Inference
 ==================
-==================
-==================
 
 Feature `with-planner`
 
 Pedigree
 ========
-========
-========
 
 Forward Inference
 Default Trait Implementations
 =============================
-=============================
 
 Datum
-=====
-=====
 =====
 
 Feature `with-datum`.
 
 Rule
 ====
-====
-====
 
 Feature `with-datum`.
 
 Feature Matrix
 ==============
-==============
-
