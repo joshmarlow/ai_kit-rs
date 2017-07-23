@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/joshmarlow/ai_kit-rs.svg?branch=master)](https://travis-ci.org/joshmarlow/ai_kit-rs)
+
 AI_Kit
 ======
 
