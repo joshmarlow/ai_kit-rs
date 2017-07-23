@@ -2,6 +2,8 @@
 name = "ai_kit"
 version = "0.1.0"
 authors = ["Josh Marlow <joshmarlow@gmail.com>"]
+repository = "https://github.com:joshmarlow/ai-kit-rs.git"
+description = "Collection of classic AI algorithms with convenient interfaces"
 
 [dependencies]
 itertools = "0.5.1"
