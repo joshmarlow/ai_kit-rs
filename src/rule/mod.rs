@@ -1,5 +1,5 @@
 use constraints::{Constraint, ConstraintValue};
-use core::{Apply, Bindings, Unify};
+use core::{Operation, Bindings, Unify};
 use serde_json;
 use std;
 use std::collections::HashMap;
@@ -17,35 +17,29 @@ pub struct Rule<T: ConstraintValue, U: Unify<T>> {
     _marker: PhantomData<T>,
 }
 
-impl<T, U> Apply<T, U> for Rule<T, U>
+impl<T, U> Operation<T, U> for Rule<T, U>
     where T: ConstraintValue,
           U: Unify<T>
 {
-    fn arg_count(&self) -> usize {
-        self.lhs.len()
+    fn input_patterns(&self) -> Vec<U> {
+        self.lhs.clone()
     }
 
-    fn apply(&self, facts: &Vec<&U>, bindings: &Bindings<T>) -> Option<(U, Bindings<T>)> {
-        self.unify(facts, bindings)
+    fn apply_match(&self, bindings: &Bindings<T>) -> Option<Vec<U>> {
+        self.solve_constraints(&bindings).and_then(|bindings| self.rhs.apply_bindings(&bindings).and_then(|bound_rhs| Some(vec![bound_rhs])))
+    }
+
+    fn r_apply_match(&self, fact: &U) -> Option<(Vec<U>, Bindings<T>)> {
+        self.rhs
+            .unify(fact, &Bindings::new())
             .and_then(|bindings| self.solve_constraints(&bindings))
-            .and_then(|bindings| self.apply_bindings(&bindings).and_then(|rhs| Some((rhs, bindings))))
+            .and_then(|bindings| {
+                utils::map_while_some(&mut self.lhs.iter(), &|f| f.apply_bindings(&bindings)).and_then(|inputs| Some((inputs, bindings)))
+            })
     }
 
     fn constraints<'a>(&'a self) -> Vec<&'a Constraint> {
         self.constraints.iter().collect()
-    }
-
-    fn r_apply(&self, fact: &U, bindings: &Bindings<T>) -> Option<(Vec<U>, Bindings<T>)> {
-        self.rhs
-            .apply_bindings(bindings)
-            .and_then(|bound_rhs| {
-                bound_rhs.unify(&fact, bindings)
-                    .and_then(|bindings| self.solve_constraints(&bindings))
-                    .and_then(|bindings| {
-                        utils::filter_map_all(&mut self.lhs.iter(), &|f| f.apply_bindings(&bindings))
-                            .and_then(|bound_lhs| Some((bound_lhs, bindings.clone())))
-                    })
-            })
     }
 
     /// Construct a new version of this rule but with all variables updated to be unique for this invocation

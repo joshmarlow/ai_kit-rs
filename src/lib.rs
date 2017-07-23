@@ -2,7 +2,6 @@
 #![recursion_limit="128"]
 
 extern crate itertools;
-extern crate permutohedron;
 extern crate serde;
 #[macro_use]
 extern crate serde_json;
@@ -20,7 +19,7 @@ pub mod core;
 #[cfg(feature = "with-datum")]
 #[macro_use]
 pub mod datum;
-#[cfg(feature = "with-infer")]
+#[cfg(feature = "with-forward-inference")]
 pub mod infer;
 #[cfg(feature = "with-pedigree")]
 pub mod pedigree;

@@ -135,15 +135,3 @@ fn test_unify_fails_when_no_match() {
     let actual_bindings = d.unify(&d2, &Bindings::new());
     assert_none!(actual_bindings);
 }
-
-#[test]
-fn test_unify_fails_when_arg_counts_differ() {
-    let d = from_json!(Datum, {
-        "vec": [{"str": "isa"}, {"str": "socrates"}, {"str": "mortal"}]
-    });
-    let d2 = from_json!(Datum, {
-        "vec": [{"str": "isa"}, {"str": "socrates"}]
-    });
-    let actual_bindings = d.unify(&d2, &Bindings::new());
-    assert_none!(actual_bindings);
-}

@@ -1,10 +1,75 @@
+use constraints::ConstraintValue;
+use core::{Operation, Bindings, BindingsValue, Unify};
+use pedigree::{Origin, Pedigree, RenderType};
+use planner::{Goal, ConjunctivePlanner, PlanningConfig};
+use serde_json;
+use std;
 use std::collections::{BTreeMap, BTreeSet};
 use std::marker::PhantomData;
-
-use constraints::ConstraintValue;
-use core::{Apply, Bindings, Unify};
-use pedigree::{Origin, Pedigree, RenderType};
+use std::collections::HashMap;
 use utils;
+
+#[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
+pub struct Negatable<B: BindingsValue, U: Unify<B>> {
+    content: U,
+    #[serde(default)]
+    is_negative: bool,
+    #[serde(default)]
+    _marker: PhantomData<B>,
+}
+
+impl<B, U> Eq for Negatable<B, U>
+    where B: BindingsValue,
+          U: Unify<B>
+{
+}
+
+impl<B, U> std::fmt::Display for Negatable<B, U>
+    where B: BindingsValue,
+          U: Unify<B>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", serde_json::to_string(&self).unwrap())
+    }
+}
+
+impl<B, U> Unify<B> for Negatable<B, U>
+    where B: BindingsValue,
+          U: Unify<B>
+{
+    fn unify(&self, other: &Self, bindings: &Bindings<B>) -> Option<Bindings<B>> {
+        self.content.unify(&other.content, bindings)
+    }
+    fn apply_bindings(&self, bindings: &Bindings<B>) -> Option<Self> {
+        self.content.apply_bindings(bindings).and_then(|bound_content| {
+            Some(Negatable {
+                content: bound_content,
+                is_negative: self.is_negative,
+                _marker: PhantomData,
+            })
+        })
+    }
+    fn variables(&self) -> Vec<String> {
+        self.content.variables()
+    }
+    fn get_variable(&self, var: &String) -> Option<&B> {
+        self.content.get_variable(var)
+    }
+    fn rename_variables(&self, renamed_variables: &HashMap<String, String>) -> Self {
+        Negatable {
+            content: self.content.rename_variables(renamed_variables),
+            is_negative: self.is_negative,
+            _marker: PhantomData,
+        }
+    }
+    fn nil() -> Self {
+        Negatable {
+            content: U::nil(),
+            is_negative: false,
+            _marker: PhantomData,
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OriginCache {
@@ -29,7 +94,7 @@ impl OriginCache {
 pub struct InferenceEngine<'a, T, U, A>
     where T: 'a + ConstraintValue,
           U: 'a + Unify<T>,
-          A: 'a + Apply<T, U>
+          A: 'a + Operation<T, U>
 {
     pub rules: BTreeMap<&'a String, &'a A>,
     pub facts: BTreeMap<&'a String, &'a U>,
@@ -46,7 +111,7 @@ pub struct InferenceEngine<'a, T, U, A>
 impl<'a, T, U, A> InferenceEngine<'a, T, U, A>
     where T: 'a + ConstraintValue,
           U: 'a + Unify<T>,
-          A: 'a + Apply<T, U>
+          A: 'a + Operation<T, U>
 {
     pub fn new(prefix: String, rules: BTreeMap<&'a String, &'a A>, facts: BTreeMap<&'a String, &'a U>) -> Self {
         InferenceEngine {
@@ -128,46 +193,114 @@ impl<'a, T, U, A> InferenceEngine<'a, T, U, A>
 pub fn chain_forward<T, U, A>(facts: Vec<(&String, &U)>, rules: Vec<(&String, &A)>, origin_cache: &mut OriginCache) -> Vec<(U, Bindings<T>, Origin)>
     where T: ConstraintValue,
           U: Unify<T>,
-          A: Apply<T, U>
+          A: Operation<T, U>
 {
-    let mut new_facts: Vec<(U, Bindings<T>, Origin)> = Vec::new();
+    let mut derived_facts: Vec<(U, Bindings<T>, Origin)> = Vec::new();
+    let just_the_facts: Vec<&U> = facts.iter().map(|&(_id, u)| u).collect();
 
     for (ref rule_id, ref rule) in rules.into_iter() {
-        for fact_arg_indexes in construct_fact_args_for_rule(rule.arg_count(), facts.len()).into_iter() {
-            let (fact_ids, facts_data): (Vec<_>, Vec<_>) = utils::multi_index(&facts, &fact_arg_indexes)
-                .into_iter()
-                .unzip();
+        let planner: ConjunctivePlanner<T, U, A> = ConjunctivePlanner::new(rule.input_patterns().into_iter().map(Goal::with_pattern).collect(),
+                                                                           &Bindings::new(),
+                                                                           &PlanningConfig::default(),
+                                                                           just_the_facts.clone(),
+                                                                           Vec::new());
+
+        let application_successful =
+            |(input_goals, bindings): (Vec<Goal<T, U, A>>, Bindings<T>)| -> Option<(Vec<Goal<T, U, A>>, Vec<U>, Bindings<T>)> {
+                let bound_input_goals: Vec<Goal<T, U, A>> =
+                    input_goals.iter().map(|input_goal| input_goal.apply_bindings(&bindings).expect("Should be applicable")).collect();
+                rule.apply_match(&bindings).and_then(|new_facts| Some((bound_input_goals, new_facts, bindings)))
+            };
+
+        for (matched_inputs, new_facts, bindings) in planner.filter_map(application_successful) {
+            let fact_ids: Vec<String> = extract_datum_indexes(&matched_inputs).iter().map(|idx| facts[*idx].0.clone()).collect();
             let origin = Origin {
                 source_id: (*rule_id).clone(),
-                args: fact_ids.into_iter().cloned().collect(),
+                args: fact_ids,
             };
             if origin_cache.has_item(&origin) {
                 continue;
             } else {
                 origin_cache.insert_item_mut(origin.clone());
             }
-            match rule.apply(&facts_data, &Bindings::new()) {
-                Some((new_fact, bindings)) => {
-                    if is_new_fact(&new_fact, &facts) {
-                        new_facts.push((new_fact, bindings, origin))
-                    }
+            for new_fact in new_facts {
+                if is_new_fact(&new_fact, &facts) {
+                    derived_facts.push((new_fact, bindings.clone(), origin.clone()))
                 }
-                None => (),
             }
         }
     }
-    new_facts
+    derived_facts
 }
 
-fn construct_fact_args_for_rule(rule_arg_count: usize, fact_count: usize) -> Vec<Vec<usize>> {
-    if rule_arg_count == 0 {
-        return vec![Vec::new()];
+pub fn chain_forward_with_negative_goals<T, IU, A>(facts: Vec<(&String, &Negatable<T, IU>)>,
+                                                   rules: Vec<(&String, &A)>,
+                                                   origin_cache: &mut OriginCache)
+                                                   -> Vec<(Negatable<T, IU>, Bindings<T>, Origin)>
+    where T: ConstraintValue,
+          IU: Unify<T>,
+          A: Operation<T, Negatable<T, IU>>
+{
+    let mut derived_facts: Vec<(Negatable<T, IU>, Bindings<T>, Origin)> = Vec::new();
+    let just_the_facts: Vec<&Negatable<T, IU>> = facts.iter().map(|&(_id, u)| u).collect();
+
+    for (ref rule_id, ref rule) in rules.into_iter() {
+        let (negative_inputs, positive_inputs): (Vec<Negatable<T, IU>>, Vec<Negatable<T, IU>>) =
+            rule.input_patterns().into_iter().partition(|input| input.is_negative);
+        let planner: ConjunctivePlanner<T, Negatable<T, IU>, A> =
+            ConjunctivePlanner::new(positive_inputs.into_iter().map(Goal::with_pattern).collect(),
+                                    &Bindings::new(),
+                                    &PlanningConfig::default(),
+                                    just_the_facts.clone().into_iter().collect(),
+                                    Vec::new());
+
+        let negative_patterns_are_satisfied = |(input_goals, bindings)| {
+            utils::map_while_some(&mut negative_inputs.iter(),
+                                  &|pattern| pattern.apply_bindings(&bindings))
+                .and_then(|bound_negative_patterns| if any_patterns_match(&bound_negative_patterns.iter().collect(), &just_the_facts) {
+                    None
+                } else {
+                    Some((input_goals, bindings))
+                })
+        };
+        let application_successful =
+            |(input_goals, bindings)| rule.apply_match(&bindings).and_then(|new_facts| Some((input_goals, new_facts, bindings)));
+
+        for (matched_inputs, new_facts, bindings) in planner.filter_map(negative_patterns_are_satisfied).filter_map(application_successful) {
+            let fact_ids: Vec<String> = extract_datum_indexes(&matched_inputs).iter().map(|idx| facts[*idx].0.clone()).collect();
+            let origin = Origin {
+                source_id: (*rule_id).clone(),
+                args: fact_ids,
+            };
+            if origin_cache.has_item(&origin) {
+                continue;
+            } else {
+                origin_cache.insert_item_mut(origin.clone());
+            }
+            for new_fact in new_facts {
+                if is_new_fact(&new_fact, &facts) {
+                    derived_facts.push((new_fact, bindings.clone(), origin.clone()))
+                }
+            }
+        }
     }
-    if fact_count == 0 {
-        return Vec::new();
-    }
-    let fact_indexes: Vec<usize> = (0..fact_count).collect();
-    utils::permutations(fact_indexes, rule_arg_count)
+    derived_facts
+}
+
+fn any_patterns_match<B, U>(patterns: &Vec<&U>, patterns2: &Vec<&U>) -> bool
+    where B: BindingsValue,
+          U: Unify<B>
+{
+    let empty_bindings: Bindings<B> = Bindings::new();
+    patterns.iter().any(|patt| patterns2.iter().any(|f| f.unify(patt, &empty_bindings).is_some()))
+}
+
+fn extract_datum_indexes<T, U, A>(goals: &Vec<Goal<T, U, A>>) -> Vec<usize>
+    where T: ConstraintValue,
+          U: Unify<T>,
+          A: Operation<T, U>
+{
+    goals.iter().map(|goal| goal.unification_index.datum_idx().expect("Only datum idx should be here!")).collect()
 }
 
 fn is_new_fact<T, U>(f: &U, facts: &Vec<(&String, &U)>) -> bool
