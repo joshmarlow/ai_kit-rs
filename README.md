@@ -10,7 +10,7 @@ Core project goals are:
     - only build what you need through the use of feature flags
 
 All of the algorithms (documented below) operate on several core traits, `BindingsValue`, `Unify`, `Operation`.
-`ai_kit` provides optional data structures that implement these traits, allowing all algorithms to be usable out of the box - see [Datum](#datum-module) and [Rule](#rule-module).
+`ai_kit` provides [optional data structures](#default-trait-implementations) that implement these traits, allowing all algorithms to be usable out of the box - see [Datum](#datum) and [Rule](#rule).
 Quick examples are provided before, followed by more in-depth documentation.
 
 Quick examples
@@ -34,32 +34,31 @@ This is used for implementing [Forward](#forward-inference) and [Backward](#back
 Algorithms
 ==========
 
-Constraints
+## Constraints
 ===========
 
-Forward Inference
+## Forward Inference
 =================
 
 Feature `with-forward-inference`
 
-Backward Inference
+## Backward Inference
 ==================
 
 Feature `with-planner`
 
-Pedigree
+## Pedigree
 ========
 
-Forward Inference
-Default Trait Implementations
+## Default Trait Implementations
 =============================
 
-Datum
+## Datum
 =====
 
 Feature `with-datum`.
 
-Rule
+## Rule
 ====
 
 Feature `with-datum`.
