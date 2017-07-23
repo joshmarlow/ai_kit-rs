@@ -19,6 +19,9 @@ Quick examples
 Sudoku Solver
 =============
 
+NLP Parser
+==========
+
 Core
 ====
 
@@ -36,28 +39,68 @@ Algorithms
 
 ## Constraints
 
+Feature `with-constraint`
+
+A simple and limited library for checking and satisfying constraints.
+
 ## Forward Inference
 
 Feature `with-forward-inference`
+
+Implementation of forward-chaining inference - essentially this is inference via Modus Ponens.
 
 ## Backward Inference
 
 Feature `with-planner`
 
+Backward chaining inference with backtracking.
+
 ## Pedigree
+
+Misc data-structures and code for representing the path taken to derive a given inference.
 
 ## Default Trait Implementations
 
+The above algorithms operate on any structure that implements the requisite core traits (`BindingsValue, `Unify` and `Operation`).
+`ai_kit` provides default structures that implement the core traits which should be sufficient ofr many use-cases.
 
 ## Datum
 
-
 Feature `with-datum`.
+
+The `datum::Datum` structure implements the `BindingsValue` and `Unify` traits.
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialOrd)]
+
+	pub enum Datum {
+	    Nil,
+	    String(String),
+	    Int(i64),
+	    Float(f64),
+	    Variable(String),
+	    Compound {
+	        head: Box<Datum>,
+	        args: Vec<Datum>,
+	    },
+	    Vector(Vec<Datum>),
+	}
 
 ## Rule
 
+Feature `with-rule`.
 
-Feature `with-datum`.
+The `rule::Rule` structure implements the `Operation` trait.
 
 Feature Matrix
 ==============
+
+Some features depend on other features.  This is summarized in the following table:
+
+| Feature | Requires |
+|---------|----------|
+| `with-planner`           | `with-constraint` |
+| `with-forward-inference` | `with-planner` `with-constraint` |
+| `with-rule`              | `with-constraint` |
+| `with-constraint`        | N/A|
+| `with-pedigree`          | N/A |
+| `with-datum`             | N/A |
