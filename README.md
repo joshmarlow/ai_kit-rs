@@ -35,31 +35,27 @@ Algorithms
 ==========
 
 ## Constraints
-===========
 
 ## Forward Inference
-=================
 
 Feature `with-forward-inference`
 
 ## Backward Inference
-==================
 
 Feature `with-planner`
 
 ## Pedigree
-========
 
 ## Default Trait Implementations
-=============================
+
 
 ## Datum
-=====
+
 
 Feature `with-datum`.
 
 ## Rule
-====
+
 
 Feature `with-datum`.
 
