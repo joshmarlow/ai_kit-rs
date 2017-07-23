@@ -21,10 +21,6 @@ impl<T, U> Operation<T, U> for Rule<T, U>
     where T: ConstraintValue,
           U: Unify<T>
 {
-    fn arg_count(&self) -> usize {
-        self.lhs.len()
-    }
-
     fn input_patterns(&self) -> Vec<U> {
         self.lhs.clone()
     }
