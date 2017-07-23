@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod bindings_tests {
-    use std::collections::HashMap;
     use core::{Bindings, BindingsValue};
+    use std::collections::HashMap;
 
     impl BindingsValue for String {
         fn variable(s: &String) -> Option<Self> {

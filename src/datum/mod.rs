@@ -1,11 +1,12 @@
-use serde_json;
-use std;
-use std::str;
-use std::collections::HashMap;
+
 
 #[cfg(feature = "with-constraint")]
 use constraints::ConstraintValue;
 use core;
+use serde_json;
+use std;
+use std::collections::HashMap;
+use std::str;
 use utils;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialOrd)]
@@ -276,14 +277,6 @@ impl std::fmt::Display for Datum {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", serde_json::to_string(&self).unwrap())
     }
-}
-
-macro_rules! datum_json {
-    ($json: tt) => ({
-        use serde_json;
-        let d: Datum = serde_json::from_value(json!($json)).expect("Expected json decoding");
-        d
-    })
 }
 
 #[cfg(test)]

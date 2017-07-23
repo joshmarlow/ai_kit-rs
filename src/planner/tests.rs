@@ -1,6 +1,14 @@
+use super::*;
 use datum::Datum;
 use rule::Rule;
-use super::*;
+
+macro_rules! goal_json {
+    ($type: ty, $json: tt) => ({
+        use serde_json;
+        let g: $type = serde_json::from_value(json!($json)).expect("Expected json decoding");
+        g
+    })
+}
 
 /// Recursively compares the 'spines' of two goal trees
 /// where the 'spine' is the goal pattern and the unification indexes, as well as the number of subgoals
@@ -115,15 +123,15 @@ mod create_subgoals_tests {
 
     #[test]
     fn test_create_subgoals() {
-        let data = vec![datum_json!({"vec": [
+        let data = from_json!(Vec<Datum>, [{"vec": [
               {"vec":[{"str": "current-state"}, {"float": 0}]},
               {"vec":[{"str": "time"}, {"float": 0}]},
-          ]})];
+          ]}]);
         let data_refs: Vec<&Datum> = data.iter().collect();
         let rules = setup_rules();
         let rule_refs: Vec<&Rule<Datum, Datum>> = rules.iter().collect();
 
-        let goal_pattern = datum_json!({"vec": [
+        let goal_pattern = from_json!(Datum, {"vec": [
               {"vec":[{"str": "current-state"}, {"float": 2}]},
               {"vec":[{"str": "time"}, {"var": "?t"}]},
           ]});
@@ -222,7 +230,7 @@ mod increment_tests {
 
     #[test]
     fn test_initial_increment_of_root_goal() {
-        let data = vec![datum_json!({"vec": [
+        let data = vec![from_json!(Datum, {"vec": [
               {"vec":[{"str": "current-state"}, {"float": 0}]},
               {"vec":[{"str": "time"}, {"float": 0}]},
           ]})];
@@ -300,7 +308,7 @@ mod satisfaction_tests {
 
     #[test]
     fn test_goal_satisfied_returns_true_for_satisfying_datum() {
-        let data = vec![datum_json!({"vec": [
+        let data = vec![from_json!(Datum, {"vec": [
               {"vec":[ {"str": "current-state"}, {"float": 0}]},
               {"vec":[ {"str": "time"}, {"float": 0}]},
           ]})];
@@ -320,7 +328,7 @@ mod satisfaction_tests {
 
     #[test]
     fn test_goal_satisfied_returns_false_for_non_satisfying_datum() {
-        let data = vec![datum_json!({"vec": [
+        let data = vec![from_json!(Datum, {"vec": [
               {"vec":[ {"str": "current-state"}, {"float": 0}]},
               {"vec":[ {"str": "time"}, {"float": 0}]},
           ]})];
@@ -339,7 +347,7 @@ mod satisfaction_tests {
 
     #[test]
     fn test_goal_satisfied_returns_true_for_shallowly_nested_plan() {
-        let data = vec![datum_json!({"vec": [
+        let data = vec![from_json!(Datum, {"vec": [
               {"vec":[ {"str": "current-state"}, {"float": 0}]},
               {"vec":[ {"str": "time"}, {"float": 0}]},
           ]})];
@@ -408,7 +416,7 @@ mod satisfaction_tests {
 
     #[test]
     fn test_goal_satisfied_returns_true_for_deeply_nested_plan() {
-        let data = vec![datum_json!({"vec": [
+        let data = vec![from_json!(Datum, {"vec": [
               {"vec":[ {"str": "current-state"}, {"float": 0}]},
               {"vec":[ {"str": "time"}, {"float": 0}]},
           ]})];
@@ -526,7 +534,7 @@ mod satisfaction_tests {
 
     #[test]
     fn test_goal_satisfied_returns_false_for_incomplete_nested_plan() {
-        let data = vec![datum_json!({"vec": [
+        let data = vec![from_json!(Datum, {"vec": [
                 {"vec":[ {"str": "current-state"}, {"float": 0}]},
                 {"vec":[ {"str": "time"}, {"float": 0}]},
             ]})];
@@ -793,12 +801,12 @@ mod plan_iterator_tests {
 
     #[test]
     fn test_plan_iterator() {
-        let data = vec![datum_json!({"vec": [
+        let data = vec![from_json!(Datum, {"vec": [
                 {"vec":[ {"str": "current-state"}, {"float": 0}]},
                 {"vec":[ {"str": "time"}, {"float": 0}]},
             ]})];
         let rules = setup_rules();
-        let goal_pattern = datum_json!({"vec": [
+        let goal_pattern = from_json!(Datum, {"vec": [
                 {"vec":[ {"str": "current-state"}, {"float": 4}]},
                 {"vec":[ {"str": "time"}, {"var": "?t"}]},
             ]});
@@ -904,7 +912,7 @@ mod plan_iterator_tests {
               {"str": "chased"}
             ]);
 
-        let initial_goal = Goal::with_pattern(datum_json!({"str": "sen"}));
+        let initial_goal = Goal::with_pattern(from_json!(Datum, {"str": "sen"}));
         let mut planner = Planner::new(&initial_goal,
                                        &Bindings::new(),
                                        &PlanningConfig {
@@ -936,7 +944,7 @@ mod plan_iterator_tests {
          */
         let rules = setup_rules();
 
-        let data = vec![datum_json!({"vec": [
+        let data = vec![from_json!(Datum, {"vec": [
                 {"vec":[{"str": "current-state"}, {"float": 0}]},
                 {"vec":[{"str": "time"}, {"float": 1}]},
             ]})];

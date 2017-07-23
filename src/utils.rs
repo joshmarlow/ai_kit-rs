@@ -1,29 +1,7 @@
-use std;
-
-use itertools::Itertools;
 use itertools::FoldWhile::{Continue, Done};
 
-macro_rules! assert_some_value {
-($x:expr, $y:expr) => (match $x {
-    Some(val) => assert_eq!(val, $y),
-    None => panic!("Expected value but received 'None'"),
-    })
-}
-
-macro_rules! assert_none {
-($x:expr) => (match $x {
-    None => (),
-    Some(val) => panic!("Expected 'None' received {}", val),
-    })
-}
-
-macro_rules! from_json {
-    ($type: ty, $json: tt) => ({
-        use serde_json;
-        let x: $type = serde_json::from_value(json!($json)).expect("Expected json decoding");
-        x
-    })
-}
+use itertools::Itertools;
+use std;
 
 /// Map across the iterator, terminating early if a mapping returns None
 pub fn map_while_some<A, E>(iter: &mut Iterator<Item = E>, f: &Fn(E) -> Option<A>) -> Option<Vec<A>> {

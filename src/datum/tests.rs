@@ -1,7 +1,28 @@
-use std::str;
-use datum::*;
 use super::super::core::{Bindings, Unify};
-extern crate serde_json;
+use datum::*;
+use std::str;
+
+macro_rules! assert_some_value {
+($x:expr, $y:expr) => (match $x {
+    Some(val) => assert_eq!(val, $y),
+    None => panic!("Expected value but received 'None'"),
+    })
+}
+
+macro_rules! assert_none {
+($x:expr) => (match $x {
+    None => (),
+    Some(val) => panic!("Expected 'None' received {}", val),
+    })
+}
+
+macro_rules! datum_json {
+    ($json: tt) => ({
+        use serde_json;
+        let d: Datum = serde_json::from_value(json!($json)).expect("Expected json decoding");
+        d
+    })
+}
 
 #[test]
 fn test_round_trip_json_serialization() {

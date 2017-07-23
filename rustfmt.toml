@@ -1,2 +1,4 @@
 # Maximum line length
 max_width = 150
+format_strings = true
+reorder_imports = true
