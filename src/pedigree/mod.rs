@@ -4,9 +4,6 @@ use std;
 use std::collections::btree_map::BTreeMap;
 use std::collections::btree_set::BTreeSet;
 
-#[cfg(test)]
-mod tests;
-
 #[derive(Clone, Copy, Debug)]
 pub enum RenderType {
     Full,
@@ -436,3 +433,6 @@ impl Pedigree {
         relationships.iter().join(";\n")
     }
 }
+
+#[cfg(test)]
+mod tests;
