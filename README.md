@@ -25,6 +25,7 @@ NLP Parser
 ==========
 
 This example takes a bunch of words, and rules for aggregating words into phrases and sentences, and constructs a valid parse of the words.
+It then saves a graph in [GraphViz .dot notation](http://www.graphviz.org/) of the actual goal tree constructed into a "parse.dot" in the current working directory.
 
 ```rust
 
@@ -36,6 +37,9 @@ use ai_kit::core::Bindings;
 use ai_kit::datum::Datum;
 use ai_kit::planner::*;
 use ai_kit::rule::Rule;
+use std::fs::File;
+use std::io::Write;
+use std::path;
 
 macro_rules! from_json {
     ($type: ty, $json: tt) => ({
@@ -104,7 +108,46 @@ fn main() {
 
     // Verify that the leaves of our plan are as expected
     assert_eq!(final_goal.gather_leaves(&bindings), expected_leaves);
+
+    // Render the plan using graphviz notation
+    let graphviz_rendering : String = final_goal.render_as_graphviz();
+
+    // Save the plan int he current working directory
+    File::create(path::Path::new(&"parse.dot"))
+        .and_then(|mut file| file.write_all(graphviz_rendering.as_str().as_bytes()));
 }
+```
+
+Here is the expect out content of "parse.dot":
+
+```
+graph "goal tree 'sen'" {
+
+"'sen' [Actor(8)]" -- "'np' [Actor(6)]";
+"'np' [Actor(6)]" -- "'det' [Actor(0)]";
+"'det' [Actor(0)]" -- "'a' [Datum(0)]";
+
+"'np' [Actor(6)]" -- "'noun' [Actor(4)]";
+"'noun' [Actor(4)]" -- "'dog' [Datum(2)]";
+
+"'sen' [Actor(8)]" -- "'vp' [Actor(7)]";
+"'vp' [Actor(7)]" -- "'verb' [Actor(2)]";
+"'verb' [Actor(2)]" -- "'chased' [Datum(4)]";
+
+"'vp' [Actor(7)]" -- "'np' [Actor(6)]";
+"'np' [Actor(6)]" -- "'det' [Actor(1)]";
+"'det' [Actor(1)]" -- "'the' [Datum(1)]";
+
+"'np' [Actor(6)]" -- "'noun' [Actor(5)]";
+"'noun' [Actor(5)]" -- "'cat' [Datum(3)]";
+
+}
+```
+
+If you have graphviz installed locally, you can convert this graph into a PNG file:
+
+```
+dot -Tpng parse.dot > parse.png
 ```
 
 Core
