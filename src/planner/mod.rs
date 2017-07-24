@@ -381,18 +381,18 @@ impl<T, U, A> Goal<T, U, A>
         }
     }
 
-    pub fn render(&self) -> String {
-        let subtree_string = self.render_subtree(None);
+    pub fn render_as_graphviz(&self) -> String {
+        let subtree_string = self.render_subtree_as_graphviz(None);
         format!("graph \"goal tree {}\" {{\n{}\n}}",
                 self.pattern,
                 subtree_string)
     }
 
-    pub fn render_subtree(&self, parent: Option<String>) -> String {
+    fn render_subtree_as_graphviz(&self, parent: Option<String>) -> String {
         let goal_rendering = format!("{} [{}]", self.pattern, self.unification_index);
         let subtree_string_vec: Vec<String> = self.subgoals
             .iter()
-            .map(|subgoal| subgoal.render_subtree(Some(goal_rendering.clone())))
+            .map(|subgoal| subgoal.render_subtree_as_graphviz(Some(goal_rendering.clone())))
             .collect();
         let subtree_string = subtree_string_vec.join("\n");
         let goal_parent_str = if let Some(parent_goal) = parent {
