@@ -381,6 +381,28 @@ impl<T, U, A> Goal<T, U, A>
         }
     }
 
+    pub fn render(&self) -> String {
+        let subtree_string = self.render_subtree(None);
+        format!("graph \"goal tree {}\" {{\n{}\n}}",
+                self.pattern,
+                subtree_string)
+    }
+
+    pub fn render_subtree(&self, parent: Option<String>) -> String {
+        let goal_rendering = format!("{} [{}]", self.pattern, self.unification_index);
+        let subtree_string_vec: Vec<String> = self.subgoals
+            .iter()
+            .map(|subgoal| subgoal.render_subtree(Some(goal_rendering.clone())))
+            .collect();
+        let subtree_string = subtree_string_vec.join("\n");
+        let goal_parent_str = if let Some(parent_goal) = parent {
+            format!("\"{}\" -- \"{}\";", parent_goal, goal_rendering)
+        } else {
+            String::new()
+        };
+        format!("{}\n{}", goal_parent_str, subtree_string)
+    }
+
     pub fn pprint(&self, ntabs: usize, only_render_spine: bool) -> String {
         fn concat_tabs(ntabs: usize) -> String {
             let tabv: Vec<String> = (0..ntabs).map(|_| "\t".to_string()).collect();
