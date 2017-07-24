@@ -127,7 +127,7 @@ fn main() {
 }
 ```
 
-Here is the expect out content of "parse.dot":
+Here is the expected content of "parse.dot":
 
 ```
 graph "goal tree 'sen'" {
