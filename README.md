@@ -6,10 +6,11 @@ AI_Kit
 AI_Kit aims to be a single dependency for various clssic AI algorithms.
 
 Core project goals are:
-    - use a few core traits that all algorithms operate on
-    - convenient and ergonomic interfaces to various algorithms
-    - easy to understand implementations
-    - only build what you need through the use of feature flags
+
+* use a few core traits that all algorithms operate on
+* convenient and ergonomic interfaces to various algorithms
+* easy to understand implementations
+* only build what you need through the use of feature flags
 
 All of the algorithms (documented below) operate on several core traits, `BindingsValue`, `Unify`, `Operation`.
 `ai_kit` provides [optional data structures](#default-trait-implementations) that implement these traits, allowing all algorithms to be usable out of the box - see [Datum](#datum) and [Rule](#rule).
