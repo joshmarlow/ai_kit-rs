@@ -27,7 +27,11 @@ NLP Parser
 This example takes a bunch of words, and rules for aggregating words into phrases and sentences, and constructs a valid parse of the words.
 
 ```rust
+
 extern crate ai_kit;
+#[macro_use]
+extern crate serde_json;
+
 use ai_kit::core::Bindings;
 use ai_kit::datum::Datum;
 use ai_kit::planner::*;
