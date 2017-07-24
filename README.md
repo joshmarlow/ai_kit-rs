@@ -248,3 +248,9 @@ Some features depend on other features.  This is summarized in the following tab
 | `with-constraint`        | N/A|
 | `with-pedigree`          | N/A |
 | `with-datum`             | N/A |
+
+
+Skeptic Testing
+===============
+
+Examples in this document are tested as part of the build process using [skeptic](https://github.com/brson/rust-skeptic).
