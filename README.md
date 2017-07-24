@@ -21,6 +21,14 @@ Quick examples
 Sudoku Solver
 =============
 
+Forthcoming
+
+N-Queens Solver
+===============
+
+Forthcoming
+
+
 NLP Parser
 ==========
 
