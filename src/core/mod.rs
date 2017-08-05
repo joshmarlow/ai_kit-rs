@@ -6,6 +6,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::fmt::{Debug, Display, Formatter, Result};
 use std::iter::{Extend, FromIterator};
 
+/// A type must implement BindingsValue in order to be used as the value for some variable.
 pub trait BindingsValue
     : Clone + Debug + Default + Deserialize + Display + Eq + PartialEq + PartialOrd + Serialize
     {
@@ -19,6 +20,7 @@ pub trait BindingsValue
     }
 }
 
+/// Bindings is used for storing variables and operating on variables and their bindings.
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct Bindings<T: BindingsValue> {
     #[serde(default)]
@@ -178,35 +180,42 @@ impl<T: BindingsValue> Display for Bindings<T> {
     }
 }
 
+/// A type must implement the Unify trait for it to be unifiable -  this only requirement for a data structure
+/// that the algorithms in this library operate on.
 pub trait Unify<T: BindingsValue>
     : Clone + Debug + Display + Eq + Serialize + Deserialize + PartialEq {
+    /// Check if this structure can be unified with another of the same type.
     fn unify(&self, &Self, &Bindings<T>) -> Option<Bindings<T>>;
+    /// Given some bindings, construct a new instance with any variables replaced by their values
     fn apply_bindings(&self, &Bindings<T>) -> Option<Self>;
+    /// Return all variables in this tructure
     fn variables(&self) -> Vec<String>;
-    fn get_variable(&self, &String) -> Option<&T>;
+    /// Rename any variables in this structure with another variable name
     fn rename_variables(&self, &HashMap<String, String>) -> Self;
+    /// Return a 'nil' sentinel value unique to this type of structure
     fn nil() -> Self;
-    fn equiv(&self, other: &Self) -> bool {
-        self.unify(other, &Bindings::new()).is_some()
-    }
 }
 
+/// A type that implements Operation constructs new Unifys from existing Unifys that match it's input patterns.
 pub trait Operation<T: BindingsValue, U: Unify<T>>
     : Clone + Debug + Display + Eq + PartialEq + Deserialize + Serialize {
     // NOTE: replace constraints with validate_bindings?
     #[cfg(feature = "with-constraint")]
     fn constraints<'a>(&'a self) -> Vec<&'a constraints::Constraint>;
+
+    /// Creates a new instance of this Operation where all variables are unique
     fn snowflake(&self, String) -> Self;
 
+    /// Return a vector of input patterns that must be unified with in order to apply this Operation.
     fn input_patterns(&self) -> Vec<U> {
         Vec::new()
     }
-    fn apply_match(&self, _bindings: &Bindings<T>) -> Option<Vec<U>> {
-        None
-    }
-    fn r_apply_match(&self, _fact: &U) -> Option<(Vec<U>, Bindings<T>)> {
-        None
-    }
+
+    /// Given some bindings, construct a set of output patterns
+    fn apply_match(&self, _bindings: &Bindings<T>) -> Option<Vec<U>>;
+
+    /// Given some bindings, construct a set of input patterns that would match
+    fn r_apply_match(&self, _fact: &U) -> Option<(Vec<U>, Bindings<T>)>;
 }
 
 #[cfg(test)]

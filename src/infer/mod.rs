@@ -52,9 +52,6 @@ impl<B, U> Unify<B> for Negatable<B, U>
     fn variables(&self) -> Vec<String> {
         self.content.variables()
     }
-    fn get_variable(&self, var: &String) -> Option<&B> {
-        self.content.get_variable(var)
-    }
     fn rename_variables(&self, renamed_variables: &HashMap<String, String>) -> Self {
         Negatable {
             content: self.content.rename_variables(renamed_variables),
@@ -308,7 +305,7 @@ fn is_new_fact<T, U>(f: &U, facts: &Vec<(&String, &U)>) -> bool
           U: Unify<T>
 {
     for &(_id, fact) in facts.iter() {
-        if fact.equiv(f) {
+        if fact.unify(f, &Bindings::new()).is_some() {
             return false;
         }
     }

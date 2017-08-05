@@ -13,8 +13,22 @@ Core project goals are:
 * only build what you need through the use of feature flags
 
 All of the algorithms (documented below) operate on several core traits, `BindingsValue`, `Unify`, `Operation`.
+
 `ai_kit` provides [optional data structures](#default-trait-implementations) that implement these traits, allowing all algorithms to be usable out of the box - see [Datum](#datum) and [Rule](#rule).
 Quick examples are provided before, followed by more in-depth documentation.
+
+Installation
+============
+
+You can use this library by adding the following lines to your Cargo.toml file:
+
+```
+[dependencies]
+ai_kit = "0.1.0"
+```
+
+and adding `extern crate ai_kit`; to your crate root.
+
 
 Quick examples
 ==============

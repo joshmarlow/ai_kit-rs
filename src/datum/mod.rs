@@ -200,14 +200,6 @@ impl core::Unify<Datum> for Datum {
         }
     }
 
-    fn get_variable(&self, q: &String) -> Option<&Self> {
-        match *self {
-            Datum::Variable(ref v) if v == q => Some(self),
-            Datum::Vector(ref args) => args.iter().filter_map(|arg| arg.get_variable(q)).next(),
-            _ => None,
-        }
-    }
-
     fn rename_variables(&self, renamed_variables: &HashMap<String, String>) -> Self {
         match *self {
             Datum::Variable(ref v) => {
