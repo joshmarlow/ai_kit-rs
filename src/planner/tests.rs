@@ -729,11 +729,12 @@ mod solve_tests {
     fn test_solve_conjunction_respects_bindings_at_creation() {
         let data = setup_data();
         let mut goals = setup_goals();
-        goals[0].bindings_at_creation.set_binding_mut(&"?t0".to_string(), Datum::Float(0.0));
+        goals[0].bindings_at_creation = goals[0].bindings_at_creation.set_binding(&"?t0".to_string(), Datum::Float(0.0));
 
         let mut expected_solved_goals = setup_expected_solved_goals();
         expected_solved_goals[0].unification_index = UnificationIndex::Datum(1);
-        expected_solved_goals[0].bindings_at_creation.set_binding_mut(&"?t0".to_string(), Datum::Float(0.0));
+        expected_solved_goals[0].bindings_at_creation =
+            expected_solved_goals[0].bindings_at_creation.set_binding(&"?t0".to_string(), Datum::Float(0.0));
         expected_solved_goals[1].unification_index = UnificationIndex::Datum(0);
         expected_solved_goals[2].unification_index = UnificationIndex::Datum(2);
 

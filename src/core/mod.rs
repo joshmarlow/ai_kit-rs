@@ -54,10 +54,6 @@ impl<T: BindingsValue> Bindings<T> {
         self.data.len()
     }
 
-    pub fn new_from_vec(data: Vec<(String, T)>) -> Bindings<T> {
-        data.into_iter().collect()
-    }
-
     pub fn has_binding(&self, variable: &String) -> bool {
         self.data.contains_key(variable)
     }
@@ -70,7 +66,7 @@ impl<T: BindingsValue> Bindings<T> {
         bindings_copy
     }
 
-    pub fn set_binding_mut(&mut self, variable: &String, val: T) {
+    fn set_binding_mut(&mut self, variable: &String, val: T) {
         self.ensure_equivalence_exists_mut(variable);
 
         if let Some(variable2) = val.to_variable() {
