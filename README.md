@@ -198,7 +198,7 @@ Misc data-structures and code for representing the path taken to derive a given 
 
 ## Default Trait Implementations
 
-The above algorithms operate on any structure that implements the requisite core traits (`BindingsValue, `Unify` and `Operation`).
+The above algorithms operate on any structure that implements the requisite core traits (`BindingsValue`, `Unify` and `Operation`).
 
 `ai_kit` provides default structures that implement the core traits which should be sufficient ofr many use-cases.
 
