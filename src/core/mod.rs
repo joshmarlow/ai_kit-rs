@@ -186,12 +186,16 @@ pub trait Unify<T: BindingsValue>
     : Clone + Debug + Display + Eq + Serialize + Deserialize + PartialEq {
     /// Check if this structure can be unified with another of the same type.
     fn unify(&self, &Self, &Bindings<T>) -> Option<Bindings<T>>;
+
     /// Given some bindings, construct a new instance with any variables replaced by their values
     fn apply_bindings(&self, &Bindings<T>) -> Option<Self>;
+
     /// Return all variables in this tructure
     fn variables(&self) -> Vec<String>;
+
     /// Rename any variables in this structure with another variable name
     fn rename_variables(&self, &HashMap<String, String>) -> Self;
+
     /// Return a 'nil' sentinel value unique to this type of structure
     fn nil() -> Self;
 }
