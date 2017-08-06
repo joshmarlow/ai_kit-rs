@@ -8,8 +8,8 @@ matrix:
   allow_failures:
   - rust: nightly
 script:
-  - cargo build --verbose --all
-  - cargo test --verbose --all
+- cargo build --verbose --all
+- cargo test --verbose --all
 addons:
   apt:
     packages:
@@ -21,4 +21,5 @@ notifications:
     on_success: never
 env:
   global:
-  - secure: # encrypted stuff
+  - secure: 
+  - secure: rkoyRxHD5DEgkFjMvuNg/7Z3iNTD0UZOgZzaNOzAy5mwAIsAztMNcltC2LogtFkS8oFtkn6Hvw898yAWJhRUu6Z3IP4U55YJxsaLVYXve8ULvoX3T3hHvGWt55MLJeDW2M2CPmQgGvNQEtLpJLHFcZaQ8ZzUD+UUUnODI94Hvrcc1x5lfOuinXlyJPV9HGqGqTPxTgSrfq6UIWkn4ErtQjLgdd7v3dz5L1pOhLZL8W7rrZCdRJw4cHU/upknDOe3Ki32f25pF5WlJqgtc5vly/67QBjJZnepQyULWRFwgitefC2Pp3ZnQhz4YKYOHALn9BVq+Q8uZV1I1mKK6V8H+AfOiPjugC96yscJt8joaLz3uVbL4PIWc2VDUS+x8w0xWlYtAYKRvMZHt1VgEw+afja8oHXzPxqUvCSKXQ4/WUFVcM75I/+m7xP8B4aG7ybTSM4Lh4WnKDVjqmoZhO5fEhJJPtQfDcyi8XBpp7PArD6vFuVcrrSCO/zC2MkJUL7QfTAIAm/Tu99Dt+i1eqDvHcoztLULgbi3ne/W2BK7MYu5/YUWhygKBLVjqVeAR/arPEkH4J65WYyqCL8UoEHqM+e+ZAeORmRiOcwe/SERETqz7wH4HReiYRy07zwQjRXmrsHkM/+G7LrZf1e9unX1rq0KUe1ecySvhN2ksc3Vlts=
