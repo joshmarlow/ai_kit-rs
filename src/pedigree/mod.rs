@@ -1,21 +1,26 @@
+//! The pedigree module implements functionality for tracking which Unify and Operation structures were used to derive a new Unify.
+
 use itertools::Itertools;
 use serde_json;
 use std;
 use std::collections::btree_map::BTreeMap;
 use std::collections::btree_set::BTreeSet;
 
+// Describes how a given inference tree should be rendered
 #[derive(Clone, Copy, Debug)]
 pub enum RenderType {
+    // Render all inferences that were derived in the process of deriving the specified inference
     Full,
+    // Just render the direct ancestry for the specified inference
     Pedigree,
 }
 
-/// Represent the origin of a particular datum
+/// Represent the origin of a particular Unify
 #[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Origin {
     /// What Actor does this Origin correspond to
     pub source_id: String,
-    /// What datums did the source use to construct the entity that this Origin corresponds to
+    /// What data did the source use to construct the entity that this Origin corresponds to
     pub args: Vec<String>,
 }
 
@@ -45,6 +50,7 @@ impl Origin {
     }
 }
 
+/// Used for iterating through the ancestry for a given inference
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InferenceGraphBackwardIterator<'a> {
     inf_graph: &'a InferenceGraph,
@@ -84,7 +90,7 @@ impl<'a> Iterator for InferenceGraphBackwardIterator<'a> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InferenceGraph {
     pedigree: Pedigree,
-    /// Track which generation each datum was created in; the root ocurrs in the last generation
+    /// Track which generation each unify was created in; the root ocurrs in the last generation
     entries_by_generation: Vec<BTreeSet<String>>,
     /// Inverse of entries_by_generation; map each id into the generation it was introduced in
     entries_to_generation: BTreeMap<String, usize>,
@@ -127,12 +133,12 @@ impl<'a> InferenceGraph {
     }
 
     pub fn descendent_inferences(&'a self, id: &String) -> Option<&'a BTreeSet<String>> {
-        /// Return datums derived from this one
+        /// Return unify derived from this one
         self.pedigree.get_descendents(id)
     }
 
     pub fn subsequent_inferences(&'a self, generation: usize) -> Vec<&'a BTreeSet<String>> {
-        /// Return all datums derived in and after the specified generation
+        /// Return all unify derived in and after the specified generation
         let mut subsequent_inferences = Vec::new();
 
         for entries in self.entries_by_generation

@@ -1,3 +1,14 @@
+//! The planner module implements a basic system for backtracking planner.
+//!
+//! It supports features like:
+//!
+//! * specifying a goal with constraints that must be satisfied by the resultant plan.
+//!
+//! * the ability to solve a conjunction of goal
+//!
+//! * rendering of a plan in graphviz format for easier visualization
+//!
+
 use constraints::{Constraint, ConstraintValue};
 use core::{Operation, Bindings, Unify};
 use itertools::FoldWhile::{Continue, Done};
@@ -379,6 +390,28 @@ impl<T, U, A> Goal<T, U, A>
                 }
             }
         }
+    }
+
+    pub fn render_as_graphviz(&self) -> String {
+        let subtree_string = self.render_subtree_as_graphviz(None);
+        format!("graph \"goal tree {}\" {{\n{}\n}}",
+                self.pattern,
+                subtree_string)
+    }
+
+    fn render_subtree_as_graphviz(&self, parent: Option<String>) -> String {
+        let goal_rendering = format!("{} [{}]", self.pattern, self.unification_index);
+        let subtree_string_vec: Vec<String> = self.subgoals
+            .iter()
+            .map(|subgoal| subgoal.render_subtree_as_graphviz(Some(goal_rendering.clone())))
+            .collect();
+        let subtree_string = subtree_string_vec.join("\n");
+        let goal_parent_str = if let Some(parent_goal) = parent {
+            format!("\"{}\" -- \"{}\";", parent_goal, goal_rendering)
+        } else {
+            String::new()
+        };
+        format!("{}\n{}", goal_parent_str, subtree_string)
     }
 
     pub fn pprint(&self, ntabs: usize, only_render_spine: bool) -> String {

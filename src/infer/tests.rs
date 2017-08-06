@@ -1,11 +1,8 @@
-
-
 use core::Bindings;
 use datum::Datum;
 use infer::{chain_forward_with_negative_goals, InferenceEngine, Negatable, OriginCache};
 use pedigree::{InferenceChain, Origin};
 use rule::Rule;
-use std::collections::BTreeMap;
 
 #[test]
 fn test_forward_chain() {
@@ -14,15 +11,11 @@ fn test_forward_chain() {
       "lhs": [{"vec": [{"str": "has-features"}, {"var": "?x"}]}],
       "rhs": {"vec": [{"str": "bird"}, {"var": "?x"}]},
     });
-    let rules: BTreeMap<&String, &Rule<Datum, Datum>> = vec![(&r_id, &r)]
-        .into_iter()
-        .collect();
+    let rules: Vec<(&String, &Rule<Datum, Datum>)> = vec![(&r_id, &r)];
 
     let f_id = "fact-0".to_string();
     let f = from_json!(Datum, {"vec": [{"str": "has-features"}, {"str": "bonnie"}]});
-    let facts: BTreeMap<&String, &Datum> = vec![(&f_id, &f)]
-        .into_iter()
-        .collect();
+    let facts: Vec<(&String, &Datum)> = vec![(&f_id, &f)];
 
     let mut engine = InferenceEngine::new("test".to_string(), rules, facts);
     let new_facts = engine.chain_forward();
@@ -79,16 +72,13 @@ fn test_chain_until_match() {
 
     let rule_ids = vec!["add_one".to_string(), "subtract_one".to_string(), "double".to_string(), "halve".to_string()];
 
-    let rules: BTreeMap<&String, &Rule<Datum, Datum>> = rule_ids.iter()
+    let rules: Vec<(&String, &Rule<Datum, Datum>)> = rule_ids.iter()
         .zip(rules.iter())
-        .into_iter()
         .collect();
 
     let f_id = "fact-0".to_string();
     let f = from_json!(Datum, {"vec": [{"str": "current-value"}, {"float": 0.0}]});
-    let facts: BTreeMap<&String, &Datum> = vec![(&f_id, &f)]
-        .into_iter()
-        .collect();
+    let facts: Vec<(&String, &Datum)> = vec![(&f_id, &f)];
 
     let goal = from_json!(Datum, {"vec": [{"str": "current-value"}, {"float": 4.0}]});
     let engine = InferenceEngine::new("test".to_string(), rules, facts);
@@ -123,16 +113,13 @@ fn test_chain_until_match_updates_pedigree() {
     let double_id = "double".to_string();
     let rule_ids = vec![add_one_id.clone(), double_id.clone()];
 
-    let rules: BTreeMap<&String, &Rule<Datum, Datum>> = rule_ids.iter()
+    let rules: Vec<(&String, &Rule<Datum, Datum>)> = rule_ids.iter()
         .zip(rules.iter())
-        .into_iter()
         .collect();
 
     let f_id = "fact-0".to_string();
     let f = from_json!(Datum, {"vec": [{"str": "current-value"}, {"float": 0}]});
-    let facts: BTreeMap<&String, &Datum> = vec![(&f_id, &f)]
-        .into_iter()
-        .collect();
+    let facts: Vec<(&String, &Datum)> = vec![(&f_id, &f)];
 
     let goal = from_json!(Datum, {"vec": [{"str": "current-value"}, {"float": 4}]});
     let engine = InferenceEngine::new("test".to_string(), rules, facts);

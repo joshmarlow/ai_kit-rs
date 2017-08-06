@@ -1,9 +1,10 @@
+//! The datum module provides a data structure, Datum, that implements the Unify trait.
+//! Datum aims to be a drop-in for any algorithm in ai_kit that operates on the Unify trait.
 
 
 #[cfg(feature = "with-constraint")]
 use constraints::ConstraintValue;
 use core;
-use serde_json;
 use std;
 use std::collections::HashMap;
 use std::str;
@@ -52,6 +53,20 @@ impl Datum {
         match *self {
             Datum::Variable(ref value) => Some(value.clone()),
             _ => None,
+        }
+    }
+
+    pub fn pprint(&self) -> String {
+        match *self {
+            Datum::String(ref s) => format!("'{}'", s),
+            Datum::Int(ref i) => format!("{}", i),
+            Datum::Float(ref f) => format!("{}", f),
+            Datum::Variable(ref v) => format!("{}", v),
+            Datum::Vector(ref args) => {
+                let elements: Vec<String> = args.iter().map(|e| e.pprint()).collect();
+                format!("({})", elements.join(","))
+            }
+            Datum::Nil => format!("nil"),
         }
     }
 }
@@ -187,14 +202,6 @@ impl core::Unify<Datum> for Datum {
         }
     }
 
-    fn get_variable(&self, q: &String) -> Option<&Self> {
-        match *self {
-            Datum::Variable(ref v) if v == q => Some(self),
-            Datum::Vector(ref args) => args.iter().filter_map(|arg| arg.get_variable(q)).next(),
-            _ => None,
-        }
-    }
-
     fn rename_variables(&self, renamed_variables: &HashMap<String, String>) -> Self {
         match *self {
             Datum::Variable(ref v) => {
@@ -215,7 +222,7 @@ impl core::Unify<Datum> for Datum {
 
 impl std::fmt::Display for Datum {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", serde_json::to_string(&self).unwrap())
+        write!(f, "{}", self.pprint())
     }
 }
 

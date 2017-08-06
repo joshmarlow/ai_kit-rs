@@ -1,3 +1,6 @@
+//! The rule module provides a data structure, Rule, that implements the Operation trait.
+//! Rule aims to be a drop-in for any algorithm in ai_kit that operates on the Operation trait.
+
 use constraints::{Constraint, ConstraintValue};
 use core::{Operation, Bindings, Unify};
 use serde_json;
@@ -14,7 +17,7 @@ pub struct Rule<T: ConstraintValue, U: Unify<T>> {
     pub lhs: Vec<U>,
     pub rhs: U,
     #[serde(default)]
-    _marker: PhantomData<T>,
+    pub _marker: PhantomData<T>,
 }
 
 impl<T, U> Operation<T, U> for Rule<T, U>

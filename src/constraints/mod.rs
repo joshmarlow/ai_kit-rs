@@ -1,4 +1,47 @@
-
+//! The constraints module implements a very basic system for checking and solving constraints.
+//!
+//! Examples
+//!
+//! ```
+//! use ai_kit::core::Bindings;
+//! use ai_kit::constraints::{Constraint, Number, NumericalConstraint, SolveResult};
+//!
+//! // Construct a vector of constraints
+//! let constraints = vec![
+//!    // Specify a value for a variable
+//!    Constraint::Numerical(NumericalConstraint::Set{
+//!        variable: "x".to_string(),
+//!        constant: 1.0,
+//!    }),
+//!    // Specify a value for a second variable
+//!    Constraint::Numerical(NumericalConstraint::Set{
+//!        variable: "sum".to_string(),
+//!        constant: 3.0,
+//!    }),
+//!    // Specify the relation of the first two variables and a third unknown variable
+//!    Constraint::Numerical(NumericalConstraint::Sum{
+//!        first: "x".to_string(),
+//!        second: "y".to_string(),
+//!        third: "sum".to_string()
+//!    }),
+//! ];
+//!
+//! // Check that constraints are satisfied and infer any new values that we can
+//! let result : SolveResult<Number> = Constraint::solve_many(
+//!     constraints.iter().collect(),
+//!     &Bindings::new(),
+//! );
+//!
+//! // Verify that the unknown variable (y) has the expected inferred value
+//! let expected_inferred_value = Number { value: 2.0 };
+//!
+//! if let SolveResult::Success(bindings) = result {
+//!    assert_eq!(
+//!      bindings.get_binding(&"y".to_string()).unwrap(),
+//!      expected_inferred_value
+//!    );
+//! }
+//! ```
 
 pub use self::numerical::*;
 

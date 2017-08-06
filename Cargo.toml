@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Josh Marlow <joshmarlow@gmail.com>"]
 repository = "https://github.com/joshmarlow/ai_kit-rs.git"
 description = "Collection of classic AI algorithms with convenient interfaces"
+build = "build.rs"
 license = "MIT"
 
 [badges]
@@ -15,6 +16,12 @@ serde = "0.9.5"
 serde_derive = "0.9.5"
 serde_json = "0.9"
 uuid = { version = "0.4", features = ["v4"] }
+
+[build-dependencies]
+skeptic = "0.11"
+
+[dev-dependencies]
+skeptic = "0.11"
 
 [features]
 default = ["with-planner", "with-forward-inference", "with-datum", "with-rule", "with-pedigree"]
