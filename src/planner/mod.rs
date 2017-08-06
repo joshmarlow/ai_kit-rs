@@ -1,3 +1,14 @@
+//! The planner module implements a basic system for backtracking planner.
+//!
+//! It supports features like:
+//!
+//! * specifying a goal with constraints that must be satisfied by the resultant plan.
+//!
+//! * the ability to solve a conjunction of goal
+//!
+//! * rendering of a plan in graphviz format for easier visualization
+//!
+
 use constraints::{Constraint, ConstraintValue};
 use core::{Operation, Bindings, Unify};
 use itertools::FoldWhile::{Continue, Done};

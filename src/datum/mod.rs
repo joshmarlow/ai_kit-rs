@@ -1,3 +1,5 @@
+//! The datum module provides a data structure, Datum, that implements the Unify trait.
+//! Datum aims to be a drop-in for any algorithm in ai_kit that operates on the Unify trait.
 
 
 #[cfg(feature = "with-constraint")]

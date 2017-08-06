@@ -1,3 +1,5 @@
+//! The core module contains the core data structures and traits used by all other modules.
+
 #[cfg(feature = "with-constraint")]
 use constraints;
 

@@ -4,7 +4,7 @@ use std;
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub struct Number {
-    value: f64,
+    pub value: f64,
 }
 
 impl std::fmt::Display for Number {

@@ -1,3 +1,5 @@
+//! The infer module implements basic forward chaining inference by applying any applicable Operations to a vector of Unifys.
+
 use constraints::ConstraintValue;
 use core::{Operation, Bindings, BindingsValue, Unify};
 use pedigree::{Origin, Pedigree, RenderType};
