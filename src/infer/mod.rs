@@ -93,10 +93,10 @@ pub struct InferenceEngine<'a, T, U, A>
           U: 'a + Unify<T>,
           A: 'a + Operation<T, U>
 {
-    pub rules: BTreeMap<&'a String, &'a A>,
-    pub facts: BTreeMap<&'a String, &'a U>,
+    pub rules: Vec<(&'a String, &'a A)>,
+    pub facts: Vec<(&'a String, &'a U)>,
     // Facts derived from this inference process
-    pub derived_facts: BTreeMap<String, U>,
+    pub derived_facts: Vec<(String, U)>,
     pub pedigree: Pedigree,
     pub prefix: String,
     // Used to check if an inference has already been performed,
@@ -110,11 +110,11 @@ impl<'a, T, U, A> InferenceEngine<'a, T, U, A>
           U: 'a + Unify<T>,
           A: 'a + Operation<T, U>
 {
-    pub fn new(prefix: String, rules: BTreeMap<&'a String, &'a A>, facts: BTreeMap<&'a String, &'a U>) -> Self {
+    pub fn new(prefix: String, rules: Vec<(&'a String, &'a A)>, facts: Vec<(&'a String, &'a U)>) -> Self {
         InferenceEngine {
             rules: rules,
             facts: facts,
-            derived_facts: BTreeMap::new(),
+            derived_facts: Vec::new(),
             pedigree: Pedigree::new(),
             prefix: prefix,
             origin_cache: OriginCache::new(),
@@ -125,8 +125,8 @@ impl<'a, T, U, A> InferenceEngine<'a, T, U, A>
     pub fn all_facts(&'a self) -> Vec<(&'a String, &'a U)> {
         self.derived_facts
             .iter()
-            .map(|(key, value)| (key, value))
-            .chain(self.facts.iter().map(|(key, value)| (key.clone(), value.clone())))
+            .map(|&(ref id, ref f)| (id, f))
+            .chain(self.facts.iter().map(|&(id, f)| (id, f)))
             .collect()
     }
 
@@ -147,7 +147,7 @@ impl<'a, T, U, A> InferenceEngine<'a, T, U, A>
                 }
 
                 engine.pedigree.insert_mut(id.clone(), origin);
-                engine.derived_facts.insert(id, fact);
+                engine.derived_facts.push((id, fact));
             }
             if target.is_some() {
                 break;
@@ -158,9 +158,7 @@ impl<'a, T, U, A> InferenceEngine<'a, T, U, A>
 
     pub fn chain_forward(&mut self) -> Vec<(U, Bindings<T>, Origin)> {
         let mut origin_cache = self.origin_cache.clone();
-        let results = chain_forward(self.all_facts(),
-                                    self.rules.iter().map(|(id, rule)| (id.clone(), rule.clone())).collect(),
-                                    &mut origin_cache);
+        let results = chain_forward(self.all_facts(), self.rules.clone(), &mut origin_cache);
         self.origin_cache = origin_cache;
         results
     }
@@ -169,13 +167,14 @@ impl<'a, T, U, A> InferenceEngine<'a, T, U, A>
         format!("{}-{}", self.prefix, self.derived_facts.len())
     }
 
-    pub fn render_inference_tree(&self, id: &String, render_type: RenderType) -> String {
+    pub fn render_inference_tree(&'a self, id: &String, render_type: RenderType) -> String {
+        let all_facts_map: BTreeMap<&'a String, &'a U> = self.all_facts().into_iter().collect();
+        let rule_map: BTreeMap<&'a String, &'a A> = self.rules.clone().into_iter().collect();
+
         let node_renderer = |x| {
-            self.facts
-                .get(&x)
+            all_facts_map.get(&x)
                 .and_then(|y| Some(format!("{}", y)))
-                .or_else(|| self.derived_facts.get(&x).and_then(|y| Some(format!("{}", y))))
-                .or_else(|| self.rules.get(&x).and_then(|y| Some(format!("{}", y))))
+                .or_else(|| rule_map.get(&x).and_then(|y| Some(format!("{}", y))))
                 .unwrap_or(format!("{}?", x))
         };
 
@@ -201,7 +200,6 @@ pub fn chain_forward<T, U, A>(facts: Vec<(&String, &U)>, rules: Vec<(&String, &A
                                                                            &PlanningConfig::default(),
                                                                            just_the_facts.clone(),
                                                                            Vec::new());
-
         let application_successful =
             |(input_goals, bindings): (Vec<Goal<T, U, A>>, Bindings<T>)| -> Option<(Vec<Goal<T, U, A>>, Vec<U>, Bindings<T>)> {
                 let bound_input_goals: Vec<Goal<T, U, A>> =
