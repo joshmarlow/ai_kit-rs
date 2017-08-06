@@ -3,7 +3,6 @@
 use itertools::FoldWhile::{Continue, Done};
 
 use itertools::Itertools;
-use std;
 
 /// Map across the iterator, terminating early if a mapping returns None
 pub fn map_while_some<A, E>(iter: &mut Iterator<Item = E>, f: &Fn(E) -> Option<A>) -> Option<Vec<A>> {
