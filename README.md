@@ -3,7 +3,7 @@
 AI_Kit
 ======
 
-AI_Kit aims to be a single dependency for various clssic AI algorithms.
+AI_Kit aims to be a single dependency for various classic AI algorithms.
 
 Core project goals are:
 
