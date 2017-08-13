@@ -24,6 +24,8 @@ pub enum Datum {
     Variable(String),
     #[serde(rename="vec")]
     Vector(Vec<Datum>),
+    #[serde(rename="fn")]
+    Function { head: Box<Datum>, args: Vec<Datum> },
 }
 
 impl Datum {
@@ -67,6 +69,10 @@ impl Datum {
                 format!("({})", elements.join(","))
             }
             Datum::Nil => format!("nil"),
+            Datum::Function { ref head, ref args } => {
+                let elements: Vec<String> = args.iter().map(|e| e.pprint()).collect();
+                format!("({} ({}))", head, elements.join(","))
+            }
         }
     }
 }
@@ -113,6 +119,12 @@ impl PartialEq for Datum {
             Datum::Nil => {
                 match *other {
                     Datum::Nil => true,
+                    _ => false,
+                }
+            }
+            Datum::Function { ref head, ref args } => {
+                match *other {
+                    Datum::Function { head: ref head2, args: ref args2 } if args.len() == args2.len() => head == head2 && args == args2,
                     _ => false,
                 }
             }

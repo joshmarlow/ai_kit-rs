@@ -8,7 +8,7 @@ keywords = ["ai", "inference", "planning", "constraint", "backtrack"]
 license = "MIT"
 name = "ai_kit"
 repository = "https://github.com/joshmarlow/ai_kit-rs.git"
-version = "0.1.0"
+version = "0.1.1"
 
 [badges]
 travis-ci = { repository = "joshmarlow/ai_kit-rs" }
