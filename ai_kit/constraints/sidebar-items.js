@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Constraint",""],["NumericalConstraint",""],["SolveResult",""],["SymbolicConstraint",""]],"struct":[["Number",""]],"trait":[["ConstraintValue",""]]});

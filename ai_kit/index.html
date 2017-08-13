@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `ai_kit` crate.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, ai_kit">
+
+    <title>ai_kit - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc mod">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'>Crate ai_kit</p><div class="block items"><ul><li><a href="#modules">Modules</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'ai_kit', ty: 'mod', relpath: '../'};</script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content">
+<h1 class='fqn'><span class='in-band'>Crate <a class="mod" href=''>ai_kit</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../src/ai_kit/lib.rs.html#1-50' title='goto source code'>[src]</a></span></h1>
+<div class='docblock'><p>AI_Kit aims to be a single dependency for various clssic AI algorithms.</p>
+
+<p>Core project goals are:</p>
+
+<ul>
+<li><p>convenient and ergonomic interfaces to various algorithms by building around traits.</p></li>
+<li><p>only build what you need through the use of feature flags</p></li>
+<li><p>performance</p></li>
+<li><p>easy to understand implementations</p></li>
+</ul>
+
+<p>All of the algorithms (documented below) operate on several core traits, <code>BindingsValue</code>, <code>Unify</code>, <code>Operation</code>.</p>
+</div><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="mod" href="constraints/index.html"
+                                  title='mod ai_kit::constraints'>constraints</a></td>
+                           <td class='docblock-short'>
+                                <p>The constraints module implements a very basic system for checking and solving constraints.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="mod" href="core/index.html"
+                                  title='mod ai_kit::core'>core</a></td>
+                           <td class='docblock-short'>
+                                <p>The core module contains the core data structures and traits used by all other modules.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="mod" href="datum/index.html"
+                                  title='mod ai_kit::datum'>datum</a></td>
+                           <td class='docblock-short'>
+                                <p>The datum module provides a data structure, Datum, that implements the Unify trait.
+Datum aims to be a drop-in for any algorithm in ai_kit that operates on the Unify trait.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="mod" href="infer/index.html"
+                                  title='mod ai_kit::infer'>infer</a></td>
+                           <td class='docblock-short'>
+                                <p>The infer module implements basic forward chaining inference by applying any applicable Operations to a vector of Unifys.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="mod" href="pedigree/index.html"
+                                  title='mod ai_kit::pedigree'>pedigree</a></td>
+                           <td class='docblock-short'>
+                                <p>The pedigree module implements functionality for tracking which Unify and Operation structures were used to derive a new Unify.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="mod" href="planner/index.html"
+                                  title='mod ai_kit::planner'>planner</a></td>
+                           <td class='docblock-short'>
+                                <p>The planner module implements a basic system for backtracking planner.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="mod" href="rule/index.html"
+                                  title='mod ai_kit::rule'>rule</a></td>
+                           <td class='docblock-short'>
+                                <p>The rule module provides a data structure, Rule, that implements the Operation trait.
+Rule aims to be a drop-in for any algorithm in ai_kit that operates on the Operation trait.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="mod" href="utils/index.html"
+                                  title='mod ai_kit::utils'>utils</a></td>
+                           <td class='docblock-short'>
+                                <p>Internal utilities</p>
+                           </td>
+                       </tr></table></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "ai_kit";
+    </script>
+    <script src="../main.js"></script>
+    <script defer src="../search-index.js"></script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["RenderType",""]],"struct":[["InferenceChain",""],["InferenceGraph","Provide a convenient interface to a particular inference graph."],["InferenceGraphBackwardIterator","Used for iterating through the ancestry for a given inference"],["InferenceGraphBuilder",""],["Origin","Represent the origin of a particular Unify"],["Pedigree",""]]});

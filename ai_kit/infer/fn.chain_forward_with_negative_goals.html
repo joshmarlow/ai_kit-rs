@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `chain_forward_with_negative_goals` fn in crate `ai_kit`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, chain_forward_with_negative_goals">
+
+    <title>ai_kit::infer::chain_forward_with_negative_goals - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc fn">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../index.html'>ai_kit</a>::<wbr><a href='index.html'>infer</a></p><script>window.sidebarCurrent = {name: 'chain_forward_with_negative_goals', ty: 'fn', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content">
+<h1 class='fqn'><span class='in-band'>Function <a href='../index.html'>ai_kit</a>::<wbr><a href='index.html'>infer</a>::<wbr><a class="fn" href=''>chain_forward_with_negative_goals</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../src/ai_kit/infer/mod.rs.html#233-285' title='goto source code'>[src]</a></span></h1>
+<pre class='rust fn'>pub fn chain_forward_with_negative_goals&lt;T, IU, A&gt;(<br>&nbsp;&nbsp;&nbsp;&nbsp;facts: <a class="struct" href="https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html" title="struct collections::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(</a>&amp;<a class="struct" href="https://doc.rust-lang.org/nightly/collections/string/struct.String.html" title="struct collections::string::String">String</a>, &amp;<a class="struct" href="../../ai_kit/infer/struct.Negatable.html" title="struct ai_kit::infer::Negatable">Negatable</a>&lt;T, IU&gt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">)</a>&gt;, <br>&nbsp;&nbsp;&nbsp;&nbsp;rules: <a class="struct" href="https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html" title="struct collections::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(</a>&amp;<a class="struct" href="https://doc.rust-lang.org/nightly/collections/string/struct.String.html" title="struct collections::string::String">String</a>, &amp;A<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">)</a>&gt;, <br>&nbsp;&nbsp;&nbsp;&nbsp;origin_cache: &amp;mut <a class="struct" href="../../ai_kit/infer/struct.OriginCache.html" title="struct ai_kit::infer::OriginCache">OriginCache</a><br>) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html" title="struct collections::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(</a><a class="struct" href="../../ai_kit/infer/struct.Negatable.html" title="struct ai_kit::infer::Negatable">Negatable</a>&lt;T, IU&gt;, <a class="struct" href="../../ai_kit/core/struct.Bindings.html" title="struct ai_kit::core::Bindings">Bindings</a>&lt;T&gt;, <a class="struct" href="../../ai_kit/pedigree/struct.Origin.html" title="struct ai_kit::pedigree::Origin">Origin</a><a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">)</a>&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;T: <a class="trait" href="../../ai_kit/constraints/trait.ConstraintValue.html" title="trait ai_kit::constraints::ConstraintValue">ConstraintValue</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;IU: <a class="trait" href="../../ai_kit/core/trait.Unify.html" title="trait ai_kit::core::Unify">Unify</a>&lt;T&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;A: <a class="trait" href="../../ai_kit/core/trait.Operation.html" title="trait ai_kit::core::Operation">Operation</a>&lt;T, <a class="struct" href="../../ai_kit/infer/struct.Negatable.html" title="struct ai_kit::infer::Negatable">Negatable</a>&lt;T, IU&gt;&gt;,&nbsp;</span></pre></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "ai_kit";
+    </script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

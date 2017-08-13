@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["fold_while_some",""],["map_while_some","Map across the iterator, terminating early if a mapping returns None"]]});

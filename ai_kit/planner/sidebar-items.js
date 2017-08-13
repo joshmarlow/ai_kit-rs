@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["InvalidPlan",""],["UnificationIndex",""]],"fn":[["first_goal_to_increment","Determine the first goal to increment"]],"struct":[["ConjunctivePlanner",""],["Goal",""],["Planner",""],["PlanningConfig",""]]});
