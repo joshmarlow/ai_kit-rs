@@ -18,7 +18,7 @@ pub enum RenderType {
 /// Represent the origin of a particular Unify
 #[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Origin {
-    /// What Actor does this Origin correspond to
+    /// What Operation does this Origin correspond to
     pub source_id: String,
     /// What data did the source use to construct the entity that this Origin corresponds to
     pub args: Vec<String>,
