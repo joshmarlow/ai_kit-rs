@@ -3,7 +3,7 @@
 AI_Kit
 ======
 
-AI_Kit aims to be a single dependency for various clssic AI algorithms.
+AI_Kit aims to be a single dependency for various classic AI algorithms.
 
 Core project goals are:
 
@@ -29,7 +29,12 @@ ai_kit = "0.1.0"
 
 and adding `extern crate ai_kit` to your crate root.
 
-[API Documentation](http://joshmarlow.github.io/ai_kit-rs/)
+Documentation
+=============
+
+This README provides an introduction.
+
+API Documentation is available [here](http://joshmarlow.github.io/ai_kit-rs/)
 
 Core Concepts
 =============
