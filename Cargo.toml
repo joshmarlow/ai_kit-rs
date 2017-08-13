@@ -27,7 +27,7 @@ skeptic = "0.11"
 skeptic = "0.11"
 
 [features]
-default = ["with-planner", "with-forward-inference", "with-datum", "with-rule", "with-pedigree"]
+default = ["with-planner", "with-forward-inference", "with-datum", "with-rule", "with-pedigree", "with-constraint"]
 
 with-planner = ["with-constraint"]
 with-forward-inference = ["with-planner"]
