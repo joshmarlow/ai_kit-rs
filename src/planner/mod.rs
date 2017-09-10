@@ -526,7 +526,7 @@ impl Default for PlanningConfig {
     fn default() -> Self {
         PlanningConfig {
             max_depth: 3,
-            max_increments: 100,
+            max_increments: 1000,
             reuse_data: true,
         }
     }
