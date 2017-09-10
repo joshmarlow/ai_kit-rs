@@ -3,7 +3,6 @@
 
 use constraints::{Constraint, ConstraintValue};
 use core::{Operation, Bindings, Unify};
-use serde_json;
 use std;
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -90,6 +89,17 @@ impl<T, U> Rule<T, U>
     fn solve_constraints(&self, bindings: &Bindings<T>) -> Option<Bindings<T>> {
         Constraint::solve_many(self.constraints.iter().collect(), bindings).ok()
     }
+
+    pub fn pprint(&self) -> String {
+        let lhs_string_vec: Vec<String> = self.lhs.iter().map(|o| format!("{}", o)).collect();
+        let lhs_string = lhs_string_vec.join("\n\t\t");
+        let constraints_string_vec: Vec<String> = self.constraints.iter().map(|o| format!("{}", o)).collect();
+        let constraints_string = constraints_string_vec.join("\n");
+        format!("Rule {{\n\tlhs:\n\t\t{},\n\trhs: {},\n\tconstraints: {} }}",
+                lhs_string,
+                self.rhs,
+                constraints_string)
+    }
 }
 
 impl<T, U> std::fmt::Display for Rule<T, U>
@@ -97,7 +107,7 @@ impl<T, U> std::fmt::Display for Rule<T, U>
           U: Unify<T>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", serde_json::to_string(&self).unwrap())
+        write!(f, "{}", self.pprint())
     }
 }
 
