@@ -188,7 +188,7 @@ pub trait Unify<T: BindingsValue>
     /// Given some bindings, construct a new instance with any variables replaced by their values
     fn apply_bindings(&self, &Bindings<T>) -> Option<Self>;
 
-    /// Return all variables in this tructure
+    /// Return all variables in this structure
     fn variables(&self) -> Vec<String>;
 
     /// Rename any variables in this structure with another variable name
