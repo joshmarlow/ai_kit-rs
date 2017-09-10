@@ -60,7 +60,7 @@ impl Datum {
 
     pub fn pprint(&self) -> String {
         match *self {
-            Datum::String(ref s) => format!("'{}'", s),
+            Datum::String(ref s) => format!("{}", s),
             Datum::Int(ref i) => format!("{}", i),
             Datum::Float(ref f) => format!("{}", f),
             Datum::Variable(ref v) => format!("{}", v),
