@@ -415,18 +415,15 @@ impl<T, U, A> Goal<T, U, A>
     }
 
     pub fn pprint(&self, ntabs: usize, only_render_spine: bool) -> String {
-        fn concat_tabs(ntabs: usize) -> String {
-            let tabv: Vec<String> = (0..ntabs).map(|_| "\t".to_string()).collect();
-            tabv.join("")
-        }
-        let tabs = concat_tabs(ntabs);
+        let tabs = utils::concat_tabs(ntabs);
         let subgoal_v: Vec<String> = self.subgoals.iter().map(|sg| sg.pprint(ntabs + 1, only_render_spine)).collect();
         let subgoal_s = subgoal_v.join("\n");
 
-        let parental_constraint_v: Vec<String> = self.parental_constraints.iter().map(|c| format!("{}{}", concat_tabs(ntabs + 1), c)).collect();
+        let parental_constraint_v: Vec<String> =
+            self.parental_constraints.iter().map(|c| format!("{}{}", utils::concat_tabs(ntabs + 1), c)).collect();
         let parental_constraint_s = parental_constraint_v.join("\n");
 
-        let constraint_v: Vec<String> = self.constraints.iter().map(|c| format!("{}{}", concat_tabs(ntabs + 1), c)).collect();
+        let constraint_v: Vec<String> = self.constraints.iter().map(|c| format!("{}{}", utils::concat_tabs(ntabs + 1), c)).collect();
         let constraint_s = constraint_v.join("\n");
 
         if only_render_spine {

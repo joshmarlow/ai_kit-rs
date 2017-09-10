@@ -23,3 +23,9 @@ pub fn fold_while_some<A, E>(init_acc: A, iter: &mut Iterator<Item = E>, f: &Fn(
         None => Done(None),
     })
 }
+
+/// Create a string with the specified number of tabs
+pub fn concat_tabs(ntabs: usize) -> String {
+    let tabv: Vec<String> = (0..ntabs).map(|_| "\t".to_string()).collect();
+    tabv.join("")
+}
