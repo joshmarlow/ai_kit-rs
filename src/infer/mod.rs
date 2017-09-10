@@ -304,12 +304,8 @@ fn is_new_fact<T, U>(f: &U, facts: &Vec<(&String, &U)>) -> bool
     where T: ConstraintValue,
           U: Unify<T>
 {
-    for &(_id, fact) in facts.iter() {
-        if fact.unify(f, &Bindings::new()).is_some() {
-            return false;
-        }
-    }
-    return true;
+    let empty_bindings = Bindings::new();
+    !facts.iter().any(|&(_id, fact)| fact.unify(f, &empty_bindings).is_some())
 }
 
 #[cfg(test)]
