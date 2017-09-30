@@ -6,7 +6,7 @@
 use constraints::ConstraintValue;
 use core;
 use std;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::str;
 use utils;
 
@@ -24,6 +24,8 @@ pub enum Datum {
     Variable(String),
     #[serde(rename="vec")]
     Vector(Vec<Datum>),
+    #[serde(rename="map")]
+    Map(BTreeMap<String, Datum>),
     #[serde(rename="fn")]
     Function { head: Box<Datum>, args: Vec<Datum> },
 }
@@ -66,6 +68,10 @@ impl Datum {
             Datum::Variable(ref v) => format!("{}", v),
             Datum::Vector(ref args) => {
                 let elements: Vec<String> = args.iter().map(|e| e.pprint()).collect();
+                format!("({})", elements.join(","))
+            }
+            Datum::Map(ref args) => {
+                let elements: Vec<String> = args.iter().map(|(k, v)| format!("{} => {}", k, v.pprint())).collect();
                 format!("({})", elements.join(","))
             }
             Datum::Nil => format!("nil"),
@@ -113,6 +119,12 @@ impl PartialEq for Datum {
             Datum::Vector(ref args) => {
                 match *other {
                     Datum::Vector(ref args2) => args == args2,
+                    _ => false,
+                }
+            }
+            Datum::Map(ref args) => {
+                match *other {
+                    Datum::Map(ref args2) => args == args2,
                     _ => false,
                 }
             }
@@ -166,11 +178,32 @@ impl core::Unify<Datum> for Datum {
                                    &mut args.iter().zip(args2.iter()),
                                    &|bindings: core::Bindings<Datum>, (ref a, ref b): (&Datum, &Datum)| a.unify(&b, &bindings))
         }
+
+        fn unify_maps(args: &BTreeMap<String, Datum>,
+                      args2: &BTreeMap<String, Datum>,
+                      bindings: &core::Bindings<Datum>)
+                      -> Option<core::Bindings<Datum>> {
+            if args.len() != args2.len() {
+                None
+            } else {
+                utils::fold_while_some(bindings.clone(),
+                                       &mut args.iter(),
+                                       &|bindings: core::Bindings<Datum>, (ref k, ref v): (&String, &Datum)| {
+                                           args2.get(*k).and_then(|v2| v.unify(v2, &bindings))
+                                       })
+            }
+        }
         match *self {
             Datum::Variable(ref var_name) => bindings.update_bindings(var_name, other),
             Datum::Vector(ref args) => {
                 match *other {
                     Datum::Vector(ref args2) if args.len() == args2.len() => unify_args(args, args2, &bindings),
+                    _ => None,
+                }
+            }
+            Datum::Map(ref args) => {
+                match *other {
+                    Datum::Map(ref args2) if args.len() == args2.len() => unify_maps(args, args2, &bindings),
                     _ => None,
                 }
             }
@@ -193,9 +226,15 @@ impl core::Unify<Datum> for Datum {
         fn apply_bindings_to_args(args: &Vec<Datum>, bindings: &core::Bindings<Datum>) -> Option<Vec<Datum>> {
             utils::map_while_some(&mut args.iter(), &|arg| arg.apply_bindings(bindings))
         }
+        fn apply_bindings_to_map(args: &BTreeMap<String, Datum>, bindings: &core::Bindings<Datum>) -> Option<BTreeMap<String, Datum>> {
+            utils::map_while_some(&mut args.iter(),
+                                  &|(k, v)| v.apply_bindings(bindings).and_then(|v| Some((k.clone(), v))))
+                .and_then(|tuple_vec| Some(tuple_vec.into_iter().collect::<BTreeMap<String, Datum>>()))
+        }
         match *self {
             Datum::Variable(ref var_name) => bindings.get_binding(var_name).or_else(|| Some(self.clone())),
             Datum::Vector(ref args) => apply_bindings_to_args(args, bindings).and_then(|args| Some(Datum::Vector(args))),
+            Datum::Map(ref args) => apply_bindings_to_map(args, bindings).and_then(|args| Some(Datum::Map(args))),
             _ => Some(self.clone()),
         }
     }
@@ -207,6 +246,13 @@ impl core::Unify<Datum> for Datum {
                 let mut variables = Vec::new();
                 for arg in args.iter() {
                     variables.extend(arg.variables().into_iter());
+                }
+                variables
+            }
+            Datum::Map(ref args) => {
+                let mut variables = Vec::new();
+                for v in args.values() {
+                    variables.extend(v.variables().into_iter());
                 }
                 variables
             }
@@ -223,6 +269,7 @@ impl core::Unify<Datum> for Datum {
                     .unwrap()
             }
             Datum::Vector(ref args) => Datum::Vector(args.iter().map(|arg| arg.rename_variables(renamed_variables)).collect()),
+            Datum::Map(ref args) => Datum::Map(args.iter().map(|(k, v)| (k.clone(), v.rename_variables(renamed_variables))).collect()),
             _ => self.clone(),
         }
     }
