@@ -46,7 +46,10 @@ impl Origin {
     }
 
     pub fn ancestors(&self) -> Vec<&String> {
-        self.args.iter().chain(std::iter::once(&self.source_id)).collect()
+        self.args
+            .iter()
+            .chain(std::iter::once(&self.source_id))
+            .collect()
     }
 }
 
@@ -58,30 +61,38 @@ pub struct InferenceGraphBackwardIterator<'a> {
 }
 
 impl<'a> Iterator for InferenceGraphBackwardIterator<'a> {
-    type Item = (Vec<(&'a String, Option<&'a Origin>)>, Vec<&'a BTreeSet<String>>);
+    type Item = (
+        Vec<(&'a String, Option<&'a Origin>)>,
+        Vec<&'a BTreeSet<String>>,
+    );
 
-    fn next(&mut self) -> Option<(Vec<(&'a String, Option<&'a Origin>)>, Vec<&'a BTreeSet<String>>)> {
+    fn next(
+        &mut self,
+    ) -> Option<
+        (
+            Vec<(&'a String, Option<&'a Origin>)>,
+            Vec<&'a BTreeSet<String>>,
+        ),
+    > {
         let current_generation = self.next_generation;
 
-        self.next_generation = self.next_generation.and_then(|idx| if idx == 0 { None } else { Some(idx - 1) });
+        self.next_generation = self.next_generation
+            .and_then(|idx| if idx == 0 { None } else { Some(idx - 1) });
 
-        let construct_id_origin_tuple = |current_id| {
-            (current_id,
-             self.inf_graph
-                 .pedigree
-                 .get_ancestor(current_id))
-        };
+        let construct_id_origin_tuple = |current_id| (current_id, self.inf_graph.pedigree.get_ancestor(current_id));
 
-        let construct_id_origin_tuples_for_generation = |generation: &'a BTreeSet<String>| {
-            generation.iter()
-                .map(construct_id_origin_tuple)
-                .collect()
-        };
+        let construct_id_origin_tuples_for_generation = |generation: &'a BTreeSet<String>| generation.iter().map(construct_id_origin_tuple).collect();
 
         current_generation.and_then(|generation_idx| {
-            self.inf_graph.entries_by_generation.get(generation_idx).and_then(|generation| {
-                Some((construct_id_origin_tuples_for_generation(generation), self.inf_graph.subsequent_inferences((generation_idx + 1))))
-            })
+            self.inf_graph
+                .entries_by_generation
+                .get(generation_idx)
+                .and_then(|generation| {
+                    Some((
+                        construct_id_origin_tuples_for_generation(generation),
+                        self.inf_graph.subsequent_inferences((generation_idx + 1)),
+                    ))
+                })
         })
     }
 }
@@ -133,17 +144,15 @@ impl<'a> InferenceGraph {
     }
 
     pub fn descendent_inferences(&'a self, id: &String) -> Option<&'a BTreeSet<String>> {
-        /// Return unify derived from this one
+        // Return unify derived from this one
         self.pedigree.get_descendents(id)
     }
 
     pub fn subsequent_inferences(&'a self, generation: usize) -> Vec<&'a BTreeSet<String>> {
-        /// Return all unify derived in and after the specified generation
+        // Return all unify derived in and after the specified generation
         let mut subsequent_inferences = Vec::new();
 
-        for entries in self.entries_by_generation
-            .iter()
-            .skip(generation) {
+        for entries in self.entries_by_generation.iter().skip(generation) {
             subsequent_inferences.push(entries);
         }
 
@@ -283,7 +292,7 @@ impl Pedigree {
         if !self.descendents.contains_key(&source_id) {
             self.descendents.insert(source_id.clone(), BTreeSet::new());
         }
-        let mut inner_descendents = self.descendents.get_mut(&source_id).unwrap();
+        let inner_descendents = self.descendents.get_mut(&source_id).unwrap();
         inner_descendents.insert(id);
     }
 
@@ -323,7 +332,10 @@ impl Pedigree {
             elements: self.extract_inference_graph(root)
                 .back_iter()
                 .map(|(generation, _subsequent_generations)| {
-                    generation.into_iter().map(|(ref id, ref origin)| ((*id).clone(), (*origin).cloned())).collect()
+                    generation
+                        .into_iter()
+                        .map(|(ref id, ref origin)| ((*id).clone(), (*origin).cloned()))
+                        .collect()
                 })
                 .collect(),
         }
@@ -347,58 +359,67 @@ impl Pedigree {
         builder.finalize()
     }
 
-    fn extract_inference_graph_helper(&self,
-                                      builder: InferenceGraphBuilder,
-                                      current_generation: Vec<&String>,
-                                      generations_from_root: usize)
-                                      -> InferenceGraphBuilder {
+    fn extract_inference_graph_helper(
+        &self,
+        builder: InferenceGraphBuilder,
+        current_generation: Vec<&String>,
+        generations_from_root: usize,
+    ) -> InferenceGraphBuilder {
         if current_generation.len() > 0 {
-            let builder = builder.extend_entries_by_generation(generations_from_root,
-                                                               current_generation.iter().cloned().cloned().collect());
-            current_generation.into_iter().fold(builder,
-                                                |builder, current_id| match self.get_ancestor(current_id).cloned() {
-                                                    None => builder,
-                                                    Some(ref origin) => {
-                                                        let builder = builder.update_pedigree(current_id.clone(), origin.clone());
-                                                        let builder = if origin.args.is_empty() {
-                                                            builder.update_leaves(current_id.clone())
-                                                        } else {
-                                                            builder
-                                                        };
-                                                        self.extract_inference_graph_helper(builder,
-                                                                                            origin.ancestors()
-                                                                                                .iter()
-                                                                                                .cloned()
-                                                                                                .collect(),
-                                                                                            generations_from_root + 1)
-                                                    }
-                                                })
+            let builder = builder.extend_entries_by_generation(
+                generations_from_root,
+                current_generation.iter().cloned().cloned().collect(),
+            );
+            current_generation
+                .into_iter()
+                .fold(builder, |builder, current_id| {
+                    match self.get_ancestor(current_id).cloned() {
+                        None => builder,
+                        Some(ref origin) => {
+                            let builder = builder.update_pedigree(current_id.clone(), origin.clone());
+                            let builder = if origin.args.is_empty() {
+                                builder.update_leaves(current_id.clone())
+                            } else {
+                                builder
+                            };
+                            self.extract_inference_graph_helper(
+                                builder,
+                                origin.ancestors().iter().cloned().collect(),
+                                generations_from_root + 1,
+                            )
+                        }
+                    }
+                })
         } else {
             builder
         }
     }
 
-    pub fn render_inference_tree(&self,
-                                 d_id: &String,
-                                 root_renderer: &Fn(String) -> String,
-                                 node_renderer: &Fn(String) -> String,
-                                 relation_renderder: &Fn(String, String) -> String,
-                                 render_type: RenderType)
-                                 -> String {
+    pub fn render_inference_tree(
+        &self,
+        d_id: &String,
+        root_renderer: &Fn(String) -> String,
+        node_renderer: &Fn(String) -> String,
+        relation_renderder: &Fn(String, String) -> String,
+        render_type: RenderType,
+    ) -> String {
         let s = match render_type {
             RenderType::Pedigree => self.render_inference_tree_pedigree(d_id, node_renderer),
             RenderType::Full => self.render_inference_tree_full(d_id, node_renderer, relation_renderder),
         };
-        format!("graph \"inference chain for {}\" {{\n{}\n}}",
-                root_renderer(d_id.clone()),
-                s)
+        format!(
+            "graph \"inference chain for {}\" {{\n{}\n}}",
+            root_renderer(d_id.clone()),
+            s
+        )
     }
 
-    pub fn render_inference_tree_full(&self,
-                                      d_id: &String,
-                                      node_renderer: &Fn(String) -> String,
-                                      relation_renderder: &Fn(String, String) -> String)
-                                      -> String {
+    pub fn render_inference_tree_full(
+        &self,
+        d_id: &String,
+        node_renderer: &Fn(String) -> String,
+        relation_renderder: &Fn(String, String) -> String,
+    ) -> String {
         let inf_graph = self.extract_inference_graph(d_id);
         let mut relationships: Vec<String> = Vec::new();
 
@@ -406,14 +427,17 @@ impl Pedigree {
             // For each generation
             for future_generation in future_generations.iter() {
                 // For each following generation
-                for (&(ref current_id, ref _origin), descendent_id) in
-                    current_generation.iter()
-                        .cartesian_product(future_generation.iter()) {
+                for (&(ref current_id, ref _origin), descendent_id) in current_generation
+                    .iter()
+                    .cartesian_product(future_generation.iter())
+                {
                     // For each pairing of current generation
-                    relationships.push(format!("\"{}\" -- \"{}\" \"{}\"",
-                                               node_renderer((*current_id).clone()),
-                                               node_renderer(descendent_id.clone()),
-                                               relation_renderder((*current_id).clone(), (*descendent_id).clone())));
+                    relationships.push(format!(
+                        "\"{}\" -- \"{}\" \"{}\"",
+                        node_renderer((*current_id).clone()),
+                        node_renderer(descendent_id.clone()),
+                        relation_renderder((*current_id).clone(), (*descendent_id).clone())
+                    ));
                 }
             }
         }
@@ -424,14 +448,18 @@ impl Pedigree {
         let mut relationships: Vec<String> = Vec::new();
         if let Some(origin) = self.ancestors.get(d_id) {
             // Render the relationship to the parent actor
-            relationships.push(format!(r#""{}" -- "{}""#,
-                                       node_renderer(d_id.clone()),
-                                       node_renderer(origin.source_id.clone())));
+            relationships.push(format!(
+                r#""{}" -- "{}""#,
+                node_renderer(d_id.clone()),
+                node_renderer(origin.source_id.clone())
+            ));
             for arg in origin.args.iter() {
                 // Render the relationship to each parent actor argument
-                relationships.push(format!(r#""{}" -- "{}""#,
-                                           node_renderer(d_id.clone()),
-                                           node_renderer(arg.clone())));
+                relationships.push(format!(
+                    r#""{}" -- "{}""#,
+                    node_renderer(d_id.clone()),
+                    node_renderer(arg.clone())
+                ));
                 // Render each parent actor argument's relationships
                 relationships.push(self.render_inference_tree_pedigree(arg, node_renderer));
             }

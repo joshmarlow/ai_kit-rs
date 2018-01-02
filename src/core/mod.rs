@@ -80,7 +80,7 @@ impl<T: BindingsValue> Bindings<T> {
         }
     }
 
-    fn add_equivalence(&mut self, variable: &String, variable2: &String) {
+    pub fn add_equivalence(&mut self, variable: &String, variable2: &String) {
         self.ensure_equivalence_exists_mut(&variable2);
         self.merge_equivalences_mut(variable, &variable2);
     }

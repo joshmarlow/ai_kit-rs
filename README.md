@@ -373,7 +373,7 @@ fn main() {
     let graphviz_rendering : String = final_goal.render_as_graphviz();
 
     // Save the plan in the current working directory
-    File::create(path::Path::new(&"parse.dot"))
+    File::create(path::Path::new(&"/Users/josh/parse.dot"))
         .and_then(|mut file| file.write_all(graphviz_rendering.as_str().as_bytes()));
 }
 ```

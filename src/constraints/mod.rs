@@ -108,6 +108,7 @@ impl<T: ConstraintValue> std::fmt::Display for SolveResult<T> {
 pub enum Constraint {
     #[serde(rename="numerical")]
     Numerical(NumericalConstraint),
+    #[serde(rename="symbolic")]
     Symbolic(SymbolicConstraint),
 }
 

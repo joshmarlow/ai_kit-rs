@@ -14,6 +14,8 @@ use utils;
 pub enum Datum {
     #[serde(rename="null")]
     Nil,
+    #[serde(rename="bool")]
+    Bool(bool),
     #[serde(rename="str")]
     String(String),
     #[serde(rename="int")]
@@ -60,8 +62,17 @@ impl Datum {
         }
     }
 
+    pub fn to_map(&self) -> Option<BTreeMap<String, Datum>> {
+        match *self {
+            Datum::Map(ref elements) => Some(elements.clone()),
+            _ => None,
+        }
+    }
+
     pub fn pprint(&self) -> String {
         match *self {
+            Datum::Nil => format!("nil"),
+            Datum::Bool(ref b) => format!("{}", b),
             Datum::String(ref s) => format!("{}", s),
             Datum::Int(ref i) => format!("{}", i),
             Datum::Float(ref f) => format!("{}", f),
@@ -74,7 +85,6 @@ impl Datum {
                 let elements: Vec<String> = args.iter().map(|(k, v)| format!("{} => {}", k, v.pprint())).collect();
                 format!("({})", elements.join(","))
             }
-            Datum::Nil => format!("nil"),
             Datum::Function { ref head, ref args } => {
                 let elements: Vec<String> = args.iter().map(|e| e.pprint()).collect();
                 format!("({} ({}))", head, elements.join(","))
@@ -92,6 +102,18 @@ impl Default for Datum {
 impl PartialEq for Datum {
     fn eq(&self, other: &Datum) -> bool {
         match *self {
+            Datum::Nil => {
+                match *other {
+                    Datum::Nil => true,
+                    _ => false,
+                }
+            }
+            Datum::Bool(b) => {
+                match *other {
+                    Datum::Bool(b2) => b == b2,
+                    _ => false,
+                }
+            }
             Datum::String(ref s) => {
                 match *other {
                     Datum::String(ref s2) => s == s2,
@@ -125,12 +147,6 @@ impl PartialEq for Datum {
             Datum::Map(ref args) => {
                 match *other {
                     Datum::Map(ref args2) => args == args2,
-                    _ => false,
-                }
-            }
-            Datum::Nil => {
-                match *other {
-                    Datum::Nil => true,
                     _ => false,
                 }
             }

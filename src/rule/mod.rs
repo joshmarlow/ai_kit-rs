@@ -76,6 +76,15 @@ impl<T, U> Rule<T, U>
     where T: ConstraintValue,
           U: Unify<T>
 {
+    pub fn new(lhs: Vec<U>, rhs: U, constraints: Vec<Constraint>) -> Self {
+        Rule {
+            constraints: constraints,
+            lhs: lhs,
+            rhs: rhs,
+            _marker: PhantomData,
+        }
+    }
+
     pub fn unify(&self, facts: &Vec<&U>, bindings: &Bindings<T>) -> Option<Bindings<T>> {
         utils::fold_while_some(bindings.clone(),
                                &mut self.lhs.iter().zip(facts.iter()),
