@@ -113,6 +113,11 @@ pub enum Constraint {
 }
 
 impl Eq for Constraint {}
+impl Ord for Constraint {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap_or(std::cmp::Ordering::Less)
+    }
+}
 impl std::fmt::Display for Constraint {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", serde_json::to_string(&self).unwrap())

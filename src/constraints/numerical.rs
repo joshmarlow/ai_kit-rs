@@ -60,6 +60,11 @@ pub enum NumericalConstraint {
 }
 
 impl Eq for NumericalConstraint {}
+impl Ord for NumericalConstraint {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap_or(std::cmp::Ordering::Less)
+    }
+}
 impl PartialOrd for NumericalConstraint {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         match (self, other) {
