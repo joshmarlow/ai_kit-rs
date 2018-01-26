@@ -113,6 +113,31 @@ impl PartialOrd for NumericalConstraint {
                     ordering => ordering,
                 }
             }
+            (&NumericalConstraint::Set { .. }, &NumericalConstraint::Sum { .. }) => Some(std::cmp::Ordering::Less),
+            (&NumericalConstraint::Set { .. }, &NumericalConstraint::Mul { .. }) => Some(std::cmp::Ordering::Less),
+            (&NumericalConstraint::Set { .. }, &NumericalConstraint::GreaterThan { .. }) => Some(std::cmp::Ordering::Less),
+            (&NumericalConstraint::Set { .. }, &NumericalConstraint::NotEqual { .. }) => Some(std::cmp::Ordering::Less),
+
+            (&NumericalConstraint::Sum { .. }, &NumericalConstraint::Set { .. }) => Some(std::cmp::Ordering::Greater),
+            (&NumericalConstraint::Sum { .. }, &NumericalConstraint::Mul { .. }) => Some(std::cmp::Ordering::Less),
+            (&NumericalConstraint::Sum { .. }, &NumericalConstraint::GreaterThan { .. }) => Some(std::cmp::Ordering::Less),
+            (&NumericalConstraint::Sum { .. }, &NumericalConstraint::NotEqual { .. }) => Some(std::cmp::Ordering::Less),
+
+            (&NumericalConstraint::Mul { .. }, &NumericalConstraint::Set { .. }) => Some(std::cmp::Ordering::Greater),
+            (&NumericalConstraint::Mul { .. }, &NumericalConstraint::Sum { .. }) => Some(std::cmp::Ordering::Greater),
+            (&NumericalConstraint::Mul { .. }, &NumericalConstraint::GreaterThan { .. }) => Some(std::cmp::Ordering::Less),
+            (&NumericalConstraint::Mul { .. }, &NumericalConstraint::NotEqual { .. }) => Some(std::cmp::Ordering::Less),
+
+            (&NumericalConstraint::GreaterThan { .. }, &NumericalConstraint::Set { .. }) => Some(std::cmp::Ordering::Greater),
+            (&NumericalConstraint::GreaterThan { .. }, &NumericalConstraint::Sum { .. }) => Some(std::cmp::Ordering::Greater),
+            (&NumericalConstraint::GreaterThan { .. }, &NumericalConstraint::Mul { .. }) => Some(std::cmp::Ordering::Greater),
+            (&NumericalConstraint::GreaterThan { .. }, &NumericalConstraint::NotEqual { .. }) => Some(std::cmp::Ordering::Less),
+
+            (&NumericalConstraint::NotEqual { .. }, &NumericalConstraint::Set { .. }) => Some(std::cmp::Ordering::Greater),
+            (&NumericalConstraint::NotEqual { .. }, &NumericalConstraint::Sum { .. }) => Some(std::cmp::Ordering::Greater),
+            (&NumericalConstraint::NotEqual { .. }, &NumericalConstraint::Mul { .. }) => Some(std::cmp::Ordering::Greater),
+            (&NumericalConstraint::NotEqual { .. }, &NumericalConstraint::GreaterThan { .. }) => Some(std::cmp::Ordering::Greater),
+
             (_, _) => None,
         }
     }

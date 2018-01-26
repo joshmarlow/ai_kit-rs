@@ -89,6 +89,73 @@ mod numerical_tests {
     use super::*;
 
     #[test]
+    fn test_set_equality() {
+        let constraint = Constraint::Numerical(NumericalConstraint::Set {
+            variable: "?constant_0".to_owned(),
+            constant: 1.0,
+        });
+
+        assert_eq!(constraint.clone(), constraint);
+    }
+
+    #[test]
+    fn test_set_ordering_with_set_and_set() {
+        let constraint = Constraint::Numerical(NumericalConstraint::Set {
+            variable: "?constant_0".to_owned(),
+            constant: 1.0,
+        });
+        let constraint_2 = Constraint::Numerical(NumericalConstraint::Set {
+            variable: "?constant_1".to_owned(),
+            constant: 2.0,
+        });
+
+        assert_eq!(constraint.clone().cmp(&constraint), std::cmp::Ordering::Equal);
+        assert_eq!(constraint.cmp(&constraint_2), std::cmp::Ordering::Less);
+        assert_eq!(constraint_2.cmp(&constraint), std::cmp::Ordering::Greater);
+
+        assert_eq!(constraint.clone().partial_cmp(&constraint), Some(std::cmp::Ordering::Equal));
+        assert_eq!(constraint.partial_cmp(&constraint_2), Some(std::cmp::Ordering::Less));
+        assert_eq!(constraint_2.partial_cmp(&constraint), Some(std::cmp::Ordering::Greater));
+    }
+
+    #[test]
+    fn test_set_ordering_with_set_and_sum() {
+        let constraint = Constraint::Numerical(NumericalConstraint::Set {
+            variable: "?constant_0".to_owned(),
+            constant: 1.0,
+        });
+        let constraint_2 = Constraint::Numerical(NumericalConstraint::Sum {
+            first: "?x".to_owned(),
+            second: "?constant_0".to_owned(),
+            third: "?y".to_owned(),
+        });
+
+        assert_eq!(constraint.clone().cmp(&constraint), std::cmp::Ordering::Equal);
+        assert_eq!(constraint.cmp(&constraint_2), std::cmp::Ordering::Less);
+        assert_eq!(constraint_2.cmp(&constraint), std::cmp::Ordering::Greater);
+
+        assert_eq!(constraint.clone().partial_cmp(&constraint), Some(std::cmp::Ordering::Equal));
+        assert_eq!(constraint.partial_cmp(&constraint_2), Some(std::cmp::Ordering::Less));
+        assert_eq!(constraint_2.partial_cmp(&constraint), Some(std::cmp::Ordering::Greater));
+    }
+
+    #[test]
+    fn test_btreeset() {
+        use std::collections::BTreeSet;
+
+        let constraint = Constraint::Numerical(NumericalConstraint::Set {
+            variable: "?constant_0".to_owned(),
+            constant: 1.0,
+        });
+        let mut set = BTreeSet::new();
+        set.insert(constraint.clone());
+        set.insert(constraint.clone());
+
+        assert_eq!(set.contains(&constraint), true);
+        assert_eq!(set.len(), 1);
+    }
+
+    #[test]
     fn test_solve_sum_constraint_forward() {
         let constraint: Constraint = Constraint::Numerical(NumericalConstraint::Sum {
             first: "?x".to_string(),
