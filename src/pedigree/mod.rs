@@ -90,7 +90,7 @@ impl<'a> Iterator for InferenceGraphBackwardIterator<'a> {
                 .and_then(|generation| {
                     Some((
                         construct_id_origin_tuples_for_generation(generation),
-                        self.inf_graph.subsequent_inferences((generation_idx + 1)),
+                        self.inf_graph.subsequent_inferences(generation_idx + 1),
                     ))
                 })
         })
@@ -144,12 +144,12 @@ impl<'a> InferenceGraph {
     }
 
     pub fn descendent_inferences(&'a self, id: &String) -> Option<&'a BTreeSet<String>> {
-        /// Return unify derived from this one
+        // Return unify derived from this one
         self.pedigree.get_descendents(id)
     }
 
     pub fn subsequent_inferences(&'a self, generation: usize) -> Vec<&'a BTreeSet<String>> {
-        /// Return all unify derived in and after the specified generation
+        // Return all unify derived in and after the specified generation
         let mut subsequent_inferences = Vec::new();
 
         for entries in self.entries_by_generation.iter().skip(generation) {
@@ -292,7 +292,7 @@ impl Pedigree {
         if !self.descendents.contains_key(&source_id) {
             self.descendents.insert(source_id.clone(), BTreeSet::new());
         }
-        let mut inner_descendents = self.descendents.get_mut(&source_id).unwrap();
+        let inner_descendents = self.descendents.get_mut(&source_id).unwrap();
         inner_descendents.insert(id);
     }
 

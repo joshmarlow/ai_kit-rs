@@ -1,6 +1,5 @@
 use super::super::core::{Bindings, Unify};
 use datum::*;
-use std::str;
 
 macro_rules! assert_some_value {
 ($x:expr, $y:expr) => (match $x {

@@ -40,7 +40,7 @@ impl Datum {
     pub fn to_float(&self) -> Option<f64> {
         match *self {
             Datum::Float(ref f_value) => Some(f_value.clone()),
-            Datum::Int(ref i_value) => Some((i_value.clone() as f64)),
+            Datum::Int(ref i_value) => Some(i_value.clone() as f64),
             _ => None,
         }
     }
