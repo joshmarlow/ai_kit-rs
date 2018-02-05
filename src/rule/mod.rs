@@ -2,7 +2,7 @@
 //! Rule aims to be a drop-in for any algorithm in ai_kit that operates on the Operation trait.
 
 use constraints::{Constraint, ConstraintValue};
-use core::{Operation, Bindings, Unify};
+use core::{Bindings, Operation, Unify};
 use std;
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -20,15 +20,20 @@ pub struct Rule<T: ConstraintValue, U: Unify<T>> {
 }
 
 impl<T, U> Operation<T, U> for Rule<T, U>
-    where T: ConstraintValue,
-          U: Unify<T>
+where
+    T: ConstraintValue,
+    U: Unify<T>,
 {
     fn input_patterns(&self) -> Vec<U> {
         self.lhs.clone()
     }
 
     fn apply_match(&self, bindings: &Bindings<T>) -> Option<Vec<U>> {
-        self.solve_constraints(&bindings).and_then(|bindings| self.rhs.apply_bindings(&bindings).and_then(|bound_rhs| Some(vec![bound_rhs])))
+        self.solve_constraints(&bindings).and_then(|bindings| {
+            self.rhs
+                .apply_bindings(&bindings)
+                .and_then(|bound_rhs| Some(vec![bound_rhs]))
+        })
     }
 
     fn r_apply_match(&self, fact: &U) -> Option<(Vec<U>, Bindings<T>)> {
@@ -36,7 +41,9 @@ impl<T, U> Operation<T, U> for Rule<T, U>
             .unify(fact, &Bindings::new())
             .and_then(|bindings| self.solve_constraints(&bindings))
             .and_then(|bindings| {
-                utils::map_while_some(&mut self.lhs.iter(), &|f| f.apply_bindings(&bindings)).and_then(|inputs| Some((inputs, bindings)))
+                utils::map_while_some(&mut self.lhs.iter(), &|f| {
+                    f.apply_bindings(&bindings)
+                }).and_then(|inputs| Some((inputs, bindings)))
             })
     }
 
@@ -55,13 +62,20 @@ impl<T, U> Operation<T, U> for Rule<T, U>
             variables.extend(constraint.variables());
         }
 
-        let renamed_variable: HashMap<String, String> = variables.into_iter()
+        let renamed_variable: HashMap<String, String> = variables
+            .into_iter()
             .map(|var| (var.clone(), format!("{}::{}", var, suffix)))
             .collect();
 
         let rhs = self.rhs.rename_variables(&renamed_variable);
-        let lhs: Vec<U> = self.lhs.iter().map(|lhs| lhs.rename_variables(&renamed_variable)).collect();
-        let constraints: Vec<Constraint> = self.constraints.iter().map(|constraint| constraint.rename_variables(&renamed_variable)).collect();
+        let lhs: Vec<U> = self.lhs
+            .iter()
+            .map(|lhs| lhs.rename_variables(&renamed_variable))
+            .collect();
+        let constraints: Vec<Constraint> = self.constraints
+            .iter()
+            .map(|constraint| constraint.rename_variables(&renamed_variable))
+            .collect();
 
         Rule {
             constraints: constraints,
@@ -73,13 +87,16 @@ impl<T, U> Operation<T, U> for Rule<T, U>
 }
 
 impl<T, U> Rule<T, U>
-    where T: ConstraintValue,
-          U: Unify<T>
+where
+    T: ConstraintValue,
+    U: Unify<T>,
 {
     pub fn unify(&self, facts: &Vec<&U>, bindings: &Bindings<T>) -> Option<Bindings<T>> {
-        utils::fold_while_some(bindings.clone(),
-                               &mut self.lhs.iter().zip(facts.iter()),
-                               &|bindings, (t1, t2)| t1.unify(t2, &bindings))
+        utils::fold_while_some(
+            bindings.clone(),
+            &mut self.lhs.iter().zip(facts.iter()),
+            &|bindings, (t1, t2)| t1.unify(t2, &bindings),
+        )
     }
 
     pub fn apply_bindings(&self, bindings: &Bindings<T>) -> Option<U> {
@@ -95,16 +112,17 @@ impl<T, U> Rule<T, U>
         let lhs_string = lhs_string_vec.join("\n\t\t");
         let constraints_string_vec: Vec<String> = self.constraints.iter().map(|o| format!("{}", o)).collect();
         let constraints_string = constraints_string_vec.join("\n");
-        format!("Rule {{\n\tlhs:\n\t\t{},\n\trhs: {},\n\tconstraints: {} }}",
-                lhs_string,
-                self.rhs,
-                constraints_string)
+        format!(
+            "Rule {{\n\tlhs:\n\t\t{},\n\trhs: {},\n\tconstraints: {} }}",
+            lhs_string, self.rhs, constraints_string
+        )
     }
 }
 
 impl<T, U> std::fmt::Display for Rule<T, U>
-    where T: ConstraintValue,
-          U: Unify<T>
+where
+    T: ConstraintValue,
+    U: Unify<T>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.pprint())
@@ -112,11 +130,11 @@ impl<T, U> std::fmt::Display for Rule<T, U>
 }
 
 impl<T, U> Eq for Rule<T, U>
-    where T: ConstraintValue,
-          U: Unify<T>
+where
+    T: ConstraintValue,
+    U: Unify<T>,
 {
 }
-
 
 #[cfg(test)]
 mod tests;
