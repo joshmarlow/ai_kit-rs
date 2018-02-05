@@ -18,53 +18,54 @@ impl SymbolicConstraint {
     /// Try to solve this constraint using the information in the bindings
     pub fn solve<T: ConstraintValue>(&self, bindings: &Bindings<T>) -> SolveResult<T> {
         match *self {
-                SymbolicConstraint::Eq { ref v1, ref v2 } => {
-                    println!("\n{:?}\n{:?}\n{:?}",
-                             bindings.get_binding(v1),
-                             bindings.get_binding(v2),
-                             T::variable(v1).and_then(|var1| Some(SolveResult::Partial(bindings.set_binding(v2, var1)))));
-                    match (bindings.get_binding(v1), bindings.get_binding(v2)) {
-                        (Some(ref val1), Some(ref val2)) => {
-                            if val1.eq(val2) {
-                                Some(SolveResult::Success(bindings.clone()))
-                            } else {
-                                None
-                            }
+            SymbolicConstraint::Eq { ref v1, ref v2 } => {
+                println!(
+                    "\n{:?}\n{:?}\n{:?}",
+                    bindings.get_binding(v1),
+                    bindings.get_binding(v2),
+                    T::variable(v1).and_then(|var1| Some(SolveResult::Partial(bindings.set_binding(v2, var1))))
+                );
+                match (bindings.get_binding(v1), bindings.get_binding(v2)) {
+                    (Some(ref val1), Some(ref val2)) => {
+                        if val1.eq(val2) {
+                            Some(SolveResult::Success(bindings.clone()))
+                        } else {
+                            None
                         }
-                        _ => Some(SolveResult::Partial(bindings.clone())),
                     }
-                }
-                SymbolicConstraint::Neq { ref v1, ref v2 } => {
-                    match (bindings.get_binding(v1), bindings.get_binding(v2)) {
-                        (Some(ref val1), Some(ref val2)) => {
-                            if val1.eq(val2) {
-                                None
-                            } else {
-                                Some(SolveResult::Success(bindings.clone()))
-                            }
-                        }
-                        _ => Some(SolveResult::Partial(bindings.clone())),
-                    }
+                    _ => Some(SolveResult::Partial(bindings.clone())),
                 }
             }
-            .unwrap_or(SolveResult::Conflict)
+            SymbolicConstraint::Neq { ref v1, ref v2 } => match (bindings.get_binding(v1), bindings.get_binding(v2)) {
+                (Some(ref val1), Some(ref val2)) => {
+                    if val1.eq(val2) {
+                        None
+                    } else {
+                        Some(SolveResult::Success(bindings.clone()))
+                    }
+                }
+                _ => Some(SolveResult::Partial(bindings.clone())),
+            },
+        }.unwrap_or(SolveResult::Conflict)
     }
 
     pub fn rename_variables(&self, renamed_variables: &HashMap<String, String>) -> Self {
-        let lookup = |v: &String| -> String { renamed_variables.get(v).cloned().or_else(|| Some(v.clone())).unwrap() };
+        let lookup = |v: &String| -> String {
+            renamed_variables
+                .get(v)
+                .cloned()
+                .or_else(|| Some(v.clone()))
+                .unwrap()
+        };
         match *self {
-            SymbolicConstraint::Eq { ref v1, ref v2 } => {
-                SymbolicConstraint::Eq {
-                    v1: lookup(v1),
-                    v2: lookup(v2),
-                }
-            }
-            SymbolicConstraint::Neq { ref v1, ref v2 } => {
-                SymbolicConstraint::Neq {
-                    v1: lookup(v1),
-                    v2: lookup(v2),
-                }
-            }
+            SymbolicConstraint::Eq { ref v1, ref v2 } => SymbolicConstraint::Eq {
+                v1: lookup(v1),
+                v2: lookup(v2),
+            },
+            SymbolicConstraint::Neq { ref v1, ref v2 } => SymbolicConstraint::Neq {
+                v1: lookup(v1),
+                v2: lookup(v2),
+            },
         }
     }
 

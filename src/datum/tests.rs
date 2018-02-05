@@ -68,7 +68,9 @@ fn test_unify_passes_with_matching_vectors() {
         {"vec":[{"str": "current-state"}, {"float": 0}]},
         {"vec":[{"str": "time"}, {"float": 0}]},
     ]});
-    let expected_bindings = Bindings::new().set_binding(&"?s1".to_string(), Datum::Float(0.0)).set_binding(&"?t1".to_string(), Datum::Float(0.0));
+    let expected_bindings = Bindings::new()
+        .set_binding(&"?s1".to_string(), Datum::Float(0.0))
+        .set_binding(&"?t1".to_string(), Datum::Float(0.0));
     let actual_bindings = d2.unify(&d, &Bindings::new());
     assert_some_value!(actual_bindings, expected_bindings);
 }

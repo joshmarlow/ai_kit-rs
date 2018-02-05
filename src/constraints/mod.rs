@@ -44,7 +44,6 @@
 //! ```
 
 pub use self::numerical::*;
-
 use core::{Bindings, BindingsValue};
 use serde_json;
 use std;
@@ -106,9 +105,8 @@ impl<T: ConstraintValue> std::fmt::Display for SolveResult<T> {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub enum Constraint {
-    #[serde(rename="numerical")]
-    Numerical(NumericalConstraint),
-    Symbolic(SymbolicConstraint),
+    #[serde(rename = "numerical")] Numerical(NumericalConstraint),
+    #[serde(rename = "symbolic")] Symbolic(SymbolicConstraint),
 }
 
 impl Eq for Constraint {}
@@ -128,19 +126,21 @@ impl Constraint {
 
     pub fn solve_many<T: ConstraintValue>(constraints: Vec<&Constraint>, bindings: &Bindings<T>) -> SolveResult<T> {
         // Aggregate all bindings from the constraints that we can solve
-        let fold_result = utils::fold_while_some((Vec::new(), bindings.clone()),
-                                                 &mut constraints.iter(),
-                                                 &|(mut remaining_constraints, bindings), constraint| {
-            let result: SolveResult<T> = constraint.solve(&bindings);
-            match result {
-                SolveResult::Conflict => None,
-                SolveResult::Partial(bindings) => {
-                    remaining_constraints.push(constraint.clone());
-                    Some((remaining_constraints, bindings.clone()))
+        let fold_result = utils::fold_while_some(
+            (Vec::new(), bindings.clone()),
+            &mut constraints.iter(),
+            &|(mut remaining_constraints, bindings), constraint| {
+                let result: SolveResult<T> = constraint.solve(&bindings);
+                match result {
+                    SolveResult::Conflict => None,
+                    SolveResult::Partial(bindings) => {
+                        remaining_constraints.push(constraint.clone());
+                        Some((remaining_constraints, bindings.clone()))
+                    }
+                    SolveResult::Success(bindings) => Some((remaining_constraints, bindings.clone())),
                 }
-                SolveResult::Success(bindings) => Some((remaining_constraints, bindings.clone())),
-            }
-        });
+            },
+        );
         match fold_result {
             Some((remaining_constraints, bindings)) => {
                 if remaining_constraints.is_empty() {

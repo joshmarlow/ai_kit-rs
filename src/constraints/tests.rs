@@ -40,8 +40,10 @@ mod solver_tests {
             .set_binding(&"?x".to_string(), Number::new(0.0))
             .set_binding(&"?y".to_string(), Number::new(5.0));
 
-        assert_eq!(Constraint::solve_many(constraints.iter().collect(), &bindings),
-               SolveResult::Success(expected_bindings));
+        assert_eq!(
+            Constraint::solve_many(constraints.iter().collect(), &bindings),
+            SolveResult::Success(expected_bindings)
+        );
     }
 
     #[test]
@@ -79,8 +81,10 @@ mod solver_tests {
             .set_binding(&"?w".to_string(), Number::new(5.0))
             .set_binding(&"?x".to_string(), Number::new(0.0));
 
-        assert_eq!(Constraint::solve_many(constraints.iter().collect(), &bindings),
-               SolveResult::Partial(expected_bindings));
+        assert_eq!(
+            Constraint::solve_many(constraints.iter().collect(), &bindings),
+            SolveResult::Partial(expected_bindings)
+        );
     }
 }
 
@@ -95,13 +99,21 @@ mod numerical_tests {
             second: "?y".to_string(),
             third: "?z".to_string(),
         });
-        let bindings: Bindings<Number> = vec![("?x".to_string(), Number::new(10.0)), ("?y".to_string(), Number::new(5.0))].into_iter().collect();
-        let expected_bindings: Bindings<Number> =
-            vec![("?x".to_string(), Number::new(10.0)), ("?y".to_string(), Number::new(5.0)), ("?z".to_string(), Number::new(15.0))]
-                .into_iter()
-                .collect();
-        assert_eq!(constraint.solve(&bindings),
-                   SolveResult::Success(expected_bindings));
+        let bindings: Bindings<Number> = vec![
+            ("?x".to_string(), Number::new(10.0)),
+            ("?y".to_string(), Number::new(5.0)),
+        ].into_iter()
+            .collect();
+        let expected_bindings: Bindings<Number> = vec![
+            ("?x".to_string(), Number::new(10.0)),
+            ("?y".to_string(), Number::new(5.0)),
+            ("?z".to_string(), Number::new(15.0)),
+        ].into_iter()
+            .collect();
+        assert_eq!(
+            constraint.solve(&bindings),
+            SolveResult::Success(expected_bindings)
+        );
     }
 
     #[test]
@@ -111,13 +123,21 @@ mod numerical_tests {
             second: "?y".to_string(),
             third: "?z".to_string(),
         });
-        let bindings: Bindings<Number> = vec![("?x".to_string(), Number::new(10.0)), ("?z".to_string(), Number::new(15.0))].into_iter().collect();
-        let expected_bindings: Bindings<Number> =
-            vec![("?x".to_string(), Number::new(10.0)), ("?y".to_string(), Number::new(5.0)), ("?z".to_string(), Number::new(15.0))]
-                .into_iter()
-                .collect();
-        assert_eq!(constraint.solve(&bindings),
-                   SolveResult::Success(expected_bindings));
+        let bindings: Bindings<Number> = vec![
+            ("?x".to_string(), Number::new(10.0)),
+            ("?z".to_string(), Number::new(15.0)),
+        ].into_iter()
+            .collect();
+        let expected_bindings: Bindings<Number> = vec![
+            ("?x".to_string(), Number::new(10.0)),
+            ("?y".to_string(), Number::new(5.0)),
+            ("?z".to_string(), Number::new(15.0)),
+        ].into_iter()
+            .collect();
+        assert_eq!(
+            constraint.solve(&bindings),
+            SolveResult::Success(expected_bindings)
+        );
     }
 
     #[test]
@@ -127,13 +147,21 @@ mod numerical_tests {
             second: "?y".to_string(),
             third: "?z".to_string(),
         });
-        let bindings: Bindings<Number> = vec![("?x".to_string(), Number::new(3.0)), ("?y".to_string(), Number::new(5.0))].into_iter().collect();
-        let expected_bindings: Bindings<Number> =
-            vec![("?x".to_string(), Number::new(3.0)), ("?y".to_string(), Number::new(5.0)), ("?z".to_string(), Number::new(15.0))]
-                .into_iter()
-                .collect();
-        assert_eq!(constraint.solve(&bindings),
-                   SolveResult::Success(expected_bindings));
+        let bindings: Bindings<Number> = vec![
+            ("?x".to_string(), Number::new(3.0)),
+            ("?y".to_string(), Number::new(5.0)),
+        ].into_iter()
+            .collect();
+        let expected_bindings: Bindings<Number> = vec![
+            ("?x".to_string(), Number::new(3.0)),
+            ("?y".to_string(), Number::new(5.0)),
+            ("?z".to_string(), Number::new(15.0)),
+        ].into_iter()
+            .collect();
+        assert_eq!(
+            constraint.solve(&bindings),
+            SolveResult::Success(expected_bindings)
+        );
     }
 
     #[test]
@@ -143,13 +171,21 @@ mod numerical_tests {
             second: "?y".to_string(),
             third: "?z".to_string(),
         });
-        let bindings: Bindings<Number> = vec![("?x".to_string(), Number::new(3.0)), ("?z".to_string(), Number::new(15.0))].into_iter().collect();
-        let expected_bindings: Bindings<Number> =
-            vec![("?x".to_string(), Number::new(3.0)), ("?y".to_string(), Number::new(5.0)), ("?z".to_string(), Number::new(15.0))]
-                .into_iter()
-                .collect();
-        assert_eq!(constraint.solve(&bindings),
-                   SolveResult::Success(expected_bindings));
+        let bindings: Bindings<Number> = vec![
+            ("?x".to_string(), Number::new(3.0)),
+            ("?z".to_string(), Number::new(15.0)),
+        ].into_iter()
+            .collect();
+        let expected_bindings: Bindings<Number> = vec![
+            ("?x".to_string(), Number::new(3.0)),
+            ("?y".to_string(), Number::new(5.0)),
+            ("?z".to_string(), Number::new(15.0)),
+        ].into_iter()
+            .collect();
+        assert_eq!(
+            constraint.solve(&bindings),
+            SolveResult::Success(expected_bindings)
+        );
     }
 
     #[test]
@@ -158,7 +194,11 @@ mod numerical_tests {
             left: "?x".to_string(),
             right: "?y".to_string(),
         });
-        let bindings: Bindings<Number> = vec![("?x".to_string(), Number::new(15.0)), ("?y".to_string(), Number::new(5.0))].into_iter().collect();
+        let bindings: Bindings<Number> = vec![
+            ("?x".to_string(), Number::new(15.0)),
+            ("?y".to_string(), Number::new(5.0)),
+        ].into_iter()
+            .collect();
         assert_eq!(constraint.solve(&bindings), SolveResult::Success(bindings));
     }
 
@@ -168,7 +208,11 @@ mod numerical_tests {
             left: "?x".to_string(),
             right: "?y".to_string(),
         });
-        let bindings: Bindings<Number> = vec![("?x".to_string(), Number::new(5.0)), ("?y".to_string(), Number::new(15.0))].into_iter().collect();
+        let bindings: Bindings<Number> = vec![
+            ("?x".to_string(), Number::new(5.0)),
+            ("?y".to_string(), Number::new(15.0)),
+        ].into_iter()
+            .collect();
         assert_eq!(constraint.solve(&bindings), SolveResult::Conflict);
     }
 }
@@ -183,9 +227,12 @@ mod symbolic_tests {
             v1: "?x".to_string(),
             v2: "?y".to_string(),
         });
-        let bindings: Bindings<Number> = vec![("?x".to_string(), Number::new(3.0)), ("?y".to_string(), Number::new(3.0))].into_iter().collect();
-        assert_eq!(constraint.solve(&bindings),
-                   SolveResult::Success(bindings));
+        let bindings: Bindings<Number> = vec![
+            ("?x".to_string(), Number::new(3.0)),
+            ("?y".to_string(), Number::new(3.0)),
+        ].into_iter()
+            .collect();
+        assert_eq!(constraint.solve(&bindings), SolveResult::Success(bindings));
     }
 
     #[test]
@@ -194,9 +241,12 @@ mod symbolic_tests {
             v1: "?x".to_string(),
             v2: "?y".to_string(),
         });
-        let bindings: Bindings<Number> = vec![("?x".to_string(), Number::new(2.0)), ("?y".to_string(), Number::new(3.0))].into_iter().collect();
-        assert_eq!(constraint.solve(&bindings),
-            SolveResult::Conflict);
+        let bindings: Bindings<Number> = vec![
+            ("?x".to_string(), Number::new(2.0)),
+            ("?y".to_string(), Number::new(3.0)),
+        ].into_iter()
+            .collect();
+        assert_eq!(constraint.solve(&bindings), SolveResult::Conflict);
     }
 
     #[test]
@@ -205,9 +255,10 @@ mod symbolic_tests {
             v1: "?x".to_string(),
             v2: "?y".to_string(),
         });
-        let bindings: Bindings<Number> = vec![("?y".to_string(), Number::new(3.0))].into_iter().collect();
-        assert_eq!(constraint.solve(&bindings),
-                   SolveResult::Partial(bindings));
+        let bindings: Bindings<Number> = vec![("?y".to_string(), Number::new(3.0))]
+            .into_iter()
+            .collect();
+        assert_eq!(constraint.solve(&bindings), SolveResult::Partial(bindings));
     }
 
     #[test]
@@ -216,9 +267,10 @@ mod symbolic_tests {
             v1: "?x".to_string(),
             v2: "?y".to_string(),
         });
-        let bindings: Bindings<Number> = vec![("?x".to_string(), Number::new(3.0))].into_iter().collect();
-        assert_eq!(constraint.solve(&bindings),
-                   SolveResult::Partial(bindings));
+        let bindings: Bindings<Number> = vec![("?x".to_string(), Number::new(3.0))]
+            .into_iter()
+            .collect();
+        assert_eq!(constraint.solve(&bindings), SolveResult::Partial(bindings));
     }
 
     #[test]
@@ -227,9 +279,12 @@ mod symbolic_tests {
             v1: "?x".to_string(),
             v2: "?y".to_string(),
         });
-        let bindings: Bindings<Number> = vec![("?x".to_string(), Number::new(2.0)), ("?y".to_string(), Number::new(3.0))].into_iter().collect();
-        assert_eq!(constraint.solve(&bindings),
-                   SolveResult::Success(bindings));
+        let bindings: Bindings<Number> = vec![
+            ("?x".to_string(), Number::new(2.0)),
+            ("?y".to_string(), Number::new(3.0)),
+        ].into_iter()
+            .collect();
+        assert_eq!(constraint.solve(&bindings), SolveResult::Success(bindings));
     }
 
     #[test]
@@ -238,7 +293,11 @@ mod symbolic_tests {
             v1: "?x".to_string(),
             v2: "?y".to_string(),
         });
-        let bindings: Bindings<Number> = vec![("?x".to_string(), Number::new(3.0)), ("?y".to_string(), Number::new(3.0))].into_iter().collect();
+        let bindings: Bindings<Number> = vec![
+            ("?x".to_string(), Number::new(3.0)),
+            ("?y".to_string(), Number::new(3.0)),
+        ].into_iter()
+            .collect();
         assert_eq!(constraint.solve(&bindings), SolveResult::Conflict);
     }
 
@@ -248,9 +307,10 @@ mod symbolic_tests {
             v1: "?x".to_string(),
             v2: "?y".to_string(),
         });
-        let bindings: Bindings<Number> = vec![("?y".to_string(), Number::new(3.0))].into_iter().collect();
-        assert_eq!(constraint.solve(&bindings),
-                   SolveResult::Partial(bindings));
+        let bindings: Bindings<Number> = vec![("?y".to_string(), Number::new(3.0))]
+            .into_iter()
+            .collect();
+        assert_eq!(constraint.solve(&bindings), SolveResult::Partial(bindings));
     }
 
     #[test]
@@ -259,8 +319,9 @@ mod symbolic_tests {
             v1: "?x".to_string(),
             v2: "?y".to_string(),
         });
-        let bindings: Bindings<Number> = vec![("?x".to_string(), Number::new(3.0))].into_iter().collect();
-        assert_eq!(constraint.solve(&bindings),
-                   SolveResult::Partial(bindings));
+        let bindings: Bindings<Number> = vec![("?x".to_string(), Number::new(3.0))]
+            .into_iter()
+            .collect();
+        assert_eq!(constraint.solve(&bindings), SolveResult::Partial(bindings));
     }
 }
