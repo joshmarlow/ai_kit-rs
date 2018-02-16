@@ -123,7 +123,7 @@ where
         let constraints_string_vec: Vec<String> = self.constraints.iter().map(|o| format!("{}", o)).collect();
         let constraints_string = constraints_string_vec.join("\n");
         format!(
-            "Rule {{\n\tlhs:\n\t\t{},\n\trhs: {},\n\tconstraints: {} }}",
+            "Rule {{\n\tlhs:\n\t\t{},\n\trhs:\n\t\t{},\n\tconstraints:\n\t\t{} }}",
             lhs_string, self.rhs, constraints_string
         )
     }
@@ -286,7 +286,7 @@ where
         let constraints_string = constraints_string_vec.join("\n");
 
         format!(
-            "MultiRule {{\n\tlhs:\n\t\t{},\n\trhs: {},\n\tconstraints: {} }}",
+            "MultiRule {{\n\tlhs:\n\t\t{},\n\trhs:\n\t\t{},\n\tconstraints:\n\t\t{} }}",
             lhs_string, rhs_string, constraints_string
         )
     }
