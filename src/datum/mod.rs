@@ -23,6 +23,13 @@ pub enum Datum {
 }
 
 impl Datum {
+    pub fn to_bool(&self) -> Option<bool> {
+        match *self {
+            Datum::Bool(ref value) => Some(value.clone()),
+            _ => None,
+        }
+    }
+
     pub fn to_string(&self) -> Option<String> {
         match *self {
             Datum::String(ref value) => Some(value.clone()),
@@ -52,6 +59,20 @@ impl Datum {
         }
     }
 
+    pub fn function_head<'a>(&'a self) -> Option<&'a Box<Self>> {
+        match *self {
+            Datum::Function { ref head, .. } => Some(head),
+            _ => None,
+        }
+    }
+
+    pub fn function_args<'a>(&'a self) -> Option<&'a Vec<Self>> {
+        match *self {
+            Datum::Function { ref args, .. } => Some(args),
+            _ => None,
+        }
+    }
+
     pub fn pprint(&self) -> String {
         match *self {
             Datum::Nil => format!("nil"),
@@ -74,6 +95,69 @@ impl Datum {
                 let elements: Vec<String> = args.iter().map(|e| e.pprint()).collect();
                 format!("({} ({}))", head, elements.join(","))
             }
+        }
+    }
+
+    pub fn is_nil(&self) -> bool {
+        match *self {
+            Datum::Nil => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_bool(&self) -> bool {
+        match *self {
+            Datum::Bool(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_int(&self) -> bool {
+        match *self {
+            Datum::Int(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_float(&self) -> bool {
+        match *self {
+            Datum::Float(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_string(&self) -> bool {
+        match *self {
+            Datum::String(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_variable(&self) -> bool {
+        match *self {
+            Datum::Variable(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_vector(&self) -> bool {
+        match *self {
+            Datum::Vector(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_map(&self) -> bool {
+        match *self {
+            Datum::Map { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_function(&self) -> bool {
+        match *self {
+            Datum::Function { .. } => true,
+            _ => false,
         }
     }
 }
