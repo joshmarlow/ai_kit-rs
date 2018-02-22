@@ -1,9 +1,9 @@
 //! The infer module implements basic forward chaining inference by applying any applicable Operations to a vector of Unifys.
 
 use constraints::ConstraintValue;
-use core::{Operation, Bindings, BindingsValue, Unify};
+use core::{Bindings, BindingsValue, Operation, Unify};
 use pedigree::{Origin, Pedigree, RenderType};
-use planner::{Goal, ConjunctivePlanner, PlanningConfig};
+use planner::{ConjunctivePlanner, Goal, PlanningConfig};
 use serde_json;
 use std;
 use std::collections::{BTreeMap, BTreeSet};
@@ -21,14 +21,16 @@ pub struct Negatable<B: BindingsValue, U: Unify<B>> {
 }
 
 impl<B, U> Eq for Negatable<B, U>
-    where B: BindingsValue,
-          U: Unify<B>
+where
+    B: BindingsValue,
+    U: Unify<B>,
 {
 }
 
 impl<B, U> std::fmt::Display for Negatable<B, U>
-    where B: BindingsValue,
-          U: Unify<B>
+where
+    B: BindingsValue,
+    U: Unify<B>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", serde_json::to_string(&self).unwrap())
@@ -36,20 +38,23 @@ impl<B, U> std::fmt::Display for Negatable<B, U>
 }
 
 impl<B, U> Unify<B> for Negatable<B, U>
-    where B: BindingsValue,
-          U: Unify<B>
+where
+    B: BindingsValue,
+    U: Unify<B>,
 {
     fn unify(&self, other: &Self, bindings: &Bindings<B>) -> Option<Bindings<B>> {
         self.content.unify(&other.content, bindings)
     }
     fn apply_bindings(&self, bindings: &Bindings<B>) -> Option<Self> {
-        self.content.apply_bindings(bindings).and_then(|bound_content| {
-            Some(Negatable {
-                content: bound_content,
-                is_negative: self.is_negative,
-                _marker: PhantomData,
+        self.content
+            .apply_bindings(bindings)
+            .and_then(|bound_content| {
+                Some(Negatable {
+                    content: bound_content,
+                    is_negative: self.is_negative,
+                    _marker: PhantomData,
+                })
             })
-        })
     }
     fn variables(&self) -> Vec<String> {
         self.content.variables()
@@ -77,7 +82,9 @@ pub struct OriginCache {
 
 impl OriginCache {
     pub fn new() -> Self {
-        OriginCache { items: BTreeSet::new() }
+        OriginCache {
+            items: BTreeSet::new(),
+        }
     }
 
     pub fn has_item(&self, item: &Origin) -> bool {
@@ -91,9 +98,10 @@ impl OriginCache {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct InferenceEngine<'a, T, U, A>
-    where T: 'a + ConstraintValue,
-          U: 'a + Unify<T>,
-          A: 'a + Operation<T, U>
+where
+    T: 'a + ConstraintValue,
+    U: 'a + Unify<T>,
+    A: 'a + Operation<T, U>,
 {
     pub rules: Vec<(&'a String, &'a A)>,
     pub facts: Vec<(&'a String, &'a U)>,
@@ -108,9 +116,10 @@ pub struct InferenceEngine<'a, T, U, A>
 }
 
 impl<'a, T, U, A> InferenceEngine<'a, T, U, A>
-    where T: 'a + ConstraintValue,
-          U: 'a + Unify<T>,
-          A: 'a + Operation<T, U>
+where
+    T: 'a + ConstraintValue,
+    U: 'a + Unify<T>,
+    A: 'a + Operation<T, U>,
 {
     pub fn new(prefix: String, rules: Vec<(&'a String, &'a A)>, facts: Vec<(&'a String, &'a U)>) -> Self {
         InferenceEngine {
@@ -133,8 +142,9 @@ impl<'a, T, U, A> InferenceEngine<'a, T, U, A>
     }
 
     pub fn chain_until_match(&self, max_iterations: usize, goal: &U) -> (Option<(U, String)>, Self) {
-        self.chain_until(max_iterations,
-                         &|f| goal.unify(f, &Bindings::new()).is_some())
+        self.chain_until(max_iterations, &|f| {
+            goal.unify(f, &Bindings::new()).is_some()
+        })
     }
 
     pub fn chain_until(&self, max_iterations: usize, satisfied: &Fn(&U) -> bool) -> (Option<(U, String)>, Self) {
@@ -174,43 +184,62 @@ impl<'a, T, U, A> InferenceEngine<'a, T, U, A>
         let rule_map: BTreeMap<&'a String, &'a A> = self.rules.clone().into_iter().collect();
 
         let node_renderer = |x| {
-            all_facts_map.get(&x)
+            all_facts_map
+                .get(&x)
                 .and_then(|y| Some(format!("{}", y)))
                 .or_else(|| rule_map.get(&x).and_then(|y| Some(format!("{}", y))))
                 .unwrap_or(format!("{}?", x))
         };
 
-        self.pedigree.render_inference_tree(id,
-                                            &node_renderer,
-                                            &node_renderer,
-                                            &|x, _y| x.clone(),
-                                            render_type)
+        self.pedigree.render_inference_tree(
+            id,
+            &node_renderer,
+            &node_renderer,
+            &|x, _y| x.clone(),
+            render_type,
+        )
     }
 }
 
 pub fn chain_forward<T, U, A>(facts: Vec<(&String, &U)>, rules: Vec<(&String, &A)>, origin_cache: &mut OriginCache) -> Vec<(U, Bindings<T>, Origin)>
-    where T: ConstraintValue,
-          U: Unify<T>,
-          A: Operation<T, U>
+where
+    T: ConstraintValue,
+    U: Unify<T>,
+    A: Operation<T, U>,
 {
     let mut derived_facts: Vec<(U, Bindings<T>, Origin)> = Vec::new();
     let just_the_facts: Vec<&U> = facts.iter().map(|&(_id, u)| u).collect();
 
     for (ref rule_id, ref rule) in rules.into_iter() {
-        let planner: ConjunctivePlanner<T, U, A> = ConjunctivePlanner::new(rule.input_patterns().into_iter().map(Goal::with_pattern).collect(),
-                                                                           &Bindings::new(),
-                                                                           &PlanningConfig::default(),
-                                                                           just_the_facts.clone(),
-                                                                           Vec::new());
+        let planner: ConjunctivePlanner<T, U, A> = ConjunctivePlanner::new(
+            rule.input_patterns()
+                .into_iter()
+                .map(Goal::with_pattern)
+                .collect(),
+            &Bindings::new(),
+            &PlanningConfig::default(),
+            just_the_facts.clone(),
+            Vec::new(),
+        );
         let application_successful =
             |(input_goals, bindings): (Vec<Goal<T, U, A>>, Bindings<T>)| -> Option<(Vec<Goal<T, U, A>>, Vec<U>, Bindings<T>)> {
-                let bound_input_goals: Vec<Goal<T, U, A>> =
-                    input_goals.iter().map(|input_goal| input_goal.apply_bindings(&bindings).expect("Should be applicable")).collect();
-                rule.apply_match(&bindings).and_then(|new_facts| Some((bound_input_goals, new_facts, bindings)))
+                let bound_input_goals: Vec<Goal<T, U, A>> = input_goals
+                    .iter()
+                    .map(|input_goal| {
+                        input_goal
+                            .apply_bindings(&bindings)
+                            .expect("Should be applicable")
+                    })
+                    .collect();
+                rule.apply_match(&bindings)
+                    .and_then(|new_facts| Some((bound_input_goals, new_facts, bindings)))
             };
 
         for (matched_inputs, new_facts, bindings) in planner.filter_map(application_successful) {
-            let fact_ids: Vec<String> = extract_datum_indexes(&matched_inputs).iter().map(|idx| facts[*idx].0.clone()).collect();
+            let fact_ids: Vec<String> = extract_datum_indexes(&matched_inputs)
+                .iter()
+                .map(|idx| facts[*idx].0.clone())
+                .collect();
             let origin = Origin {
                 source_id: (*rule_id).clone(),
                 args: fact_ids,
@@ -230,41 +259,58 @@ pub fn chain_forward<T, U, A>(facts: Vec<(&String, &U)>, rules: Vec<(&String, &A
     derived_facts
 }
 
-pub fn chain_forward_with_negative_goals<T, IU, A>(facts: Vec<(&String, &Negatable<T, IU>)>,
-                                                   rules: Vec<(&String, &A)>,
-                                                   origin_cache: &mut OriginCache)
-                                                   -> Vec<(Negatable<T, IU>, Bindings<T>, Origin)>
-    where T: ConstraintValue,
-          IU: Unify<T>,
-          A: Operation<T, Negatable<T, IU>>
+pub fn chain_forward_with_negative_goals<T, IU, A>(
+    facts: Vec<(&String, &Negatable<T, IU>)>,
+    rules: Vec<(&String, &A)>,
+    origin_cache: &mut OriginCache,
+) -> Vec<(Negatable<T, IU>, Bindings<T>, Origin)>
+where
+    T: ConstraintValue,
+    IU: Unify<T>,
+    A: Operation<T, Negatable<T, IU>>,
 {
     let mut derived_facts: Vec<(Negatable<T, IU>, Bindings<T>, Origin)> = Vec::new();
     let just_the_facts: Vec<&Negatable<T, IU>> = facts.iter().map(|&(_id, u)| u).collect();
 
     for (ref rule_id, ref rule) in rules.into_iter() {
-        let (negative_inputs, positive_inputs): (Vec<Negatable<T, IU>>, Vec<Negatable<T, IU>>) =
-            rule.input_patterns().into_iter().partition(|input| input.is_negative);
-        let planner: ConjunctivePlanner<T, Negatable<T, IU>, A> =
-            ConjunctivePlanner::new(positive_inputs.into_iter().map(Goal::with_pattern).collect(),
-                                    &Bindings::new(),
-                                    &PlanningConfig::default(),
-                                    just_the_facts.clone().into_iter().collect(),
-                                    Vec::new());
+        let (negative_inputs, positive_inputs): (Vec<Negatable<T, IU>>, Vec<Negatable<T, IU>>) = rule.input_patterns()
+            .into_iter()
+            .partition(|input| input.is_negative);
+        let planner: ConjunctivePlanner<T, Negatable<T, IU>, A> = ConjunctivePlanner::new(
+            positive_inputs
+                .into_iter()
+                .map(Goal::with_pattern)
+                .collect(),
+            &Bindings::new(),
+            &PlanningConfig::default(),
+            just_the_facts.clone().into_iter().collect(),
+            Vec::new(),
+        );
 
         let negative_patterns_are_satisfied = |(input_goals, bindings)| {
-            utils::map_while_some(&mut negative_inputs.iter(),
-                                  &|pattern| pattern.apply_bindings(&bindings))
-                .and_then(|bound_negative_patterns| if any_patterns_match(&bound_negative_patterns.iter().collect(), &just_the_facts) {
+            utils::map_while_some(&mut negative_inputs.iter(), &|pattern| {
+                pattern.apply_bindings(&bindings)
+            }).and_then(|bound_negative_patterns| {
+                if any_patterns_match(&bound_negative_patterns.iter().collect(), &just_the_facts) {
                     None
                 } else {
                     Some((input_goals, bindings))
-                })
+                }
+            })
         };
-        let application_successful =
-            |(input_goals, bindings)| rule.apply_match(&bindings).and_then(|new_facts| Some((input_goals, new_facts, bindings)));
+        let application_successful = |(input_goals, bindings)| {
+            rule.apply_match(&bindings)
+                .and_then(|new_facts| Some((input_goals, new_facts, bindings)))
+        };
 
-        for (matched_inputs, new_facts, bindings) in planner.filter_map(negative_patterns_are_satisfied).filter_map(application_successful) {
-            let fact_ids: Vec<String> = extract_datum_indexes(&matched_inputs).iter().map(|idx| facts[*idx].0.clone()).collect();
+        for (matched_inputs, new_facts, bindings) in planner
+            .filter_map(negative_patterns_are_satisfied)
+            .filter_map(application_successful)
+        {
+            let fact_ids: Vec<String> = extract_datum_indexes(&matched_inputs)
+                .iter()
+                .map(|idx| facts[*idx].0.clone())
+                .collect();
             let origin = Origin {
                 source_id: (*rule_id).clone(),
                 args: fact_ids,
@@ -285,27 +331,43 @@ pub fn chain_forward_with_negative_goals<T, IU, A>(facts: Vec<(&String, &Negatab
 }
 
 fn any_patterns_match<B, U>(patterns: &Vec<&U>, patterns2: &Vec<&U>) -> bool
-    where B: BindingsValue,
-          U: Unify<B>
+where
+    B: BindingsValue,
+    U: Unify<B>,
 {
     let empty_bindings: Bindings<B> = Bindings::new();
-    patterns.iter().any(|patt| patterns2.iter().any(|f| f.unify(patt, &empty_bindings).is_some()))
+    patterns.iter().any(|patt| {
+        patterns2
+            .iter()
+            .any(|f| f.unify(patt, &empty_bindings).is_some())
+    })
 }
 
 fn extract_datum_indexes<T, U, A>(goals: &Vec<Goal<T, U, A>>) -> Vec<usize>
-    where T: ConstraintValue,
-          U: Unify<T>,
-          A: Operation<T, U>
+where
+    T: ConstraintValue,
+    U: Unify<T>,
+    A: Operation<T, U>,
 {
-    goals.iter().map(|goal| goal.unification_index.datum_idx().expect("Only datum idx should be here!")).collect()
+    goals
+        .iter()
+        .map(|goal| {
+            goal.unification_index
+                .datum_idx()
+                .expect("Only datum idx should be here!")
+        })
+        .collect()
 }
 
 fn is_new_fact<T, U>(f: &U, facts: &Vec<(&String, &U)>) -> bool
-    where T: ConstraintValue,
-          U: Unify<T>
+where
+    T: ConstraintValue,
+    U: Unify<T>,
 {
     let empty_bindings = Bindings::new();
-    !facts.iter().any(|&(_id, fact)| fact.unify(f, &empty_bindings).is_some())
+    !facts
+        .iter()
+        .any(|&(_id, fact)| fact.unify(f, &empty_bindings).is_some())
 }
 
 #[cfg(test)]

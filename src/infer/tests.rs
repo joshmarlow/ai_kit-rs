@@ -24,13 +24,19 @@ fn test_forward_chain() {
     let expected_bindings = Bindings::new().set_binding(&"?x".to_string(), Datum::String("bonnie".to_string()));
 
     assert_eq!(new_facts.len(), 1);
-    assert_eq!(new_facts,
-               vec![(expected_new_fact,
-                     expected_bindings,
-                     Origin {
-                         source_id: "rule-0".to_string(),
-                         args: vec!["fact-0".to_string()],
-                     })]);
+    assert_eq!(
+        new_facts,
+        vec![
+            (
+                expected_new_fact,
+                expected_bindings,
+                Origin {
+                    source_id: "rule-0".to_string(),
+                    args: vec!["fact-0".to_string()],
+                },
+            ),
+        ]
+    );
 }
 
 #[test]
@@ -70,11 +76,14 @@ fn test_chain_until_match() {
       }
     ]);
 
-    let rule_ids = vec!["add_one".to_string(), "subtract_one".to_string(), "double".to_string(), "halve".to_string()];
+    let rule_ids = vec![
+        "add_one".to_string(),
+        "subtract_one".to_string(),
+        "double".to_string(),
+        "halve".to_string(),
+    ];
 
-    let rules: Vec<(&String, &Rule<Datum, Datum>)> = rule_ids.iter()
-        .zip(rules.iter())
-        .collect();
+    let rules: Vec<(&String, &Rule<Datum, Datum>)> = rule_ids.iter().zip(rules.iter()).collect();
 
     let f_id = "fact-0".to_string();
     let f = from_json!(Datum, {"vec": [{"str": "current-value"}, {"float": 0.0}]});
@@ -113,9 +122,7 @@ fn test_chain_until_match_updates_pedigree() {
     let double_id = "double".to_string();
     let rule_ids = vec![add_one_id.clone(), double_id.clone()];
 
-    let rules: Vec<(&String, &Rule<Datum, Datum>)> = rule_ids.iter()
-        .zip(rules.iter())
-        .collect();
+    let rules: Vec<(&String, &Rule<Datum, Datum>)> = rule_ids.iter().zip(rules.iter()).collect();
 
     let f_id = "fact-0".to_string();
     let f = from_json!(Datum, {"vec": [{"str": "current-value"}, {"float": 0}]});
@@ -148,10 +155,18 @@ fn test_chain_until_match_updates_pedigree() {
 
     let inference_chain = engine.pedigree.extract_inference_chain(&target_fact_id);
     let expected_inference_chain = InferenceChain {
-        elements: vec![(vec![(test_id_6.clone(), Some(test_6_origin.clone()))]),
-                       (vec![(double_id.clone(), None), (test_id_2.clone(), Some(test_2_origin.clone()))]),
-                       (vec![(double_id.clone(), None), (test_id_0.clone(), Some(test_0_origin.clone()))]),
-                       (vec![(add_one_id.clone(), None), (f_id.clone(), None)])],
+        elements: vec![
+            (vec![(test_id_6.clone(), Some(test_6_origin.clone()))]),
+            (vec![
+                (double_id.clone(), None),
+                (test_id_2.clone(), Some(test_2_origin.clone())),
+            ]),
+            (vec![
+                (double_id.clone(), None),
+                (test_id_0.clone(), Some(test_0_origin.clone())),
+            ]),
+            (vec![(add_one_id.clone(), None), (f_id.clone(), None)]),
+        ],
     };
     assert_eq!(inference_chain, expected_inference_chain);
 }
@@ -180,10 +195,15 @@ fn test_chain_forward_with_negative_goals() {
           {"content": {"vec": [{"str": "odd-value"}, {"int": 3}]}},
     ]);
 
-    let data_ids = vec!["d0".to_string(), "d1".to_string(), "d2".to_string(), "d3".to_string(), "d4".to_string(), "d5".to_string()];
-    let data_with_ids: Vec<(&String, &Negatable<Datum, Datum>)> = data_ids.iter()
-        .zip(data.iter())
-        .collect();
+    let data_ids = vec![
+        "d0".to_string(),
+        "d1".to_string(),
+        "d2".to_string(),
+        "d3".to_string(),
+        "d4".to_string(),
+        "d5".to_string(),
+    ];
+    let data_with_ids: Vec<(&String, &Negatable<Datum, Datum>)> = data_ids.iter().zip(data.iter()).collect();
     let rule_ids = vec!["r0".to_string()];
     let rules_with_ids: Vec<(&String, &Rule<Datum, Negatable<Datum, Datum>>)> = rule_ids.iter().zip(rules.iter()).collect();
     let results = chain_forward_with_negative_goals(data_with_ids, rules_with_ids, &mut OriginCache::new());
