@@ -160,6 +160,32 @@ impl Datum {
             _ => false,
         }
     }
+
+    pub fn has_same_shape_as(&self, other: &Datum) -> bool {
+        match (self, other) {
+            (&Datum::Nil, &Datum::Nil) => true,
+            (&Datum::Bool(_), &Datum::Bool(_)) => true,
+            (&Datum::Int(_), &Datum::Int(_)) => true,
+            (&Datum::Float(_), &Datum::Float(_)) => true,
+            (&Datum::String(_), &Datum::String(_)) => true,
+            (&Datum::Variable(_), &Datum::Variable(_)) => true,
+            (&Datum::Vector(ref x), &Datum::Vector(ref y)) => x.len() == y.len(),
+            (&Datum::Map(ref x), &Datum::Map(ref y)) => x.len() == y.len(),
+            (
+                &Datum::Function { ref head, ref args },
+                &Datum::Function {
+                    head: ref head2,
+                    args: ref args2,
+                },
+            ) => {
+                head.has_same_shape_as(head2)
+                    && args.iter()
+                        .zip(args2.iter())
+                        .all(|(x, y)| x.has_same_shape_as(y))
+            }
+            _ => false,
+        }
+    }
 }
 
 impl Default for Datum {
