@@ -290,6 +290,24 @@ where
             lhs_string, rhs_string, constraints_string
         )
     }
+
+    /// Rename any variables in this structure with another variable name
+    pub fn rename_variables(&self, renamed_variables: &HashMap<String, String>) -> Self {
+        MultiRule::new(
+            self.lhs
+                .iter()
+                .map(|u| u.rename_variables(renamed_variables))
+                .collect(),
+            self.rhs
+                .iter()
+                .map(|u| u.rename_variables(renamed_variables))
+                .collect(),
+            self.constraints
+                .iter()
+                .map(|c| c.rename_variables(renamed_variables))
+                .collect(),
+        )
+    }
 }
 
 impl<T, U> std::fmt::Display for MultiRule<T, U>

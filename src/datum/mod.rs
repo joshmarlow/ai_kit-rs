@@ -335,6 +335,12 @@ impl core::Unify<Datum> for Datum {
                 .or_else(|| Some(self.clone())),
             Datum::Vector(ref args) => apply_bindings_to_args(args, bindings).and_then(|args| Some(Datum::Vector(args))),
             Datum::Map(ref args) => apply_bindings_to_map(args, bindings).and_then(|args| Some(Datum::Map(args))),
+            Datum::Function { ref head, ref args } => head.apply_bindings(bindings).and_then(|head| {
+                apply_bindings_to_args(args, bindings).map(|args| Datum::Function {
+                    head: Box::new(head),
+                    args: args,
+                })
+            }),
             _ => Some(self.clone()),
         }
     }
